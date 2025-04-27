@@ -16,10 +16,17 @@ Things to do and fix:
 
 - Better macro for an unsigned 32 bit integer type for a give platform to replace the unsigned long long everywhere.
 
-- Add an option to memcpy the tag_data for a swf_tag from the main movie buffer to somewhere else. Goes hand in hand with (7).
+- Add an option to memcpy the tag_data for a swf_tag from the main movie buffer to somewhere else. Goes hand in hand with the next bullet.
 
 - A custom allocator for platforms that support it, to put some random airgap at runtime between allocations(possibly even order) to prevent exploits with a low bar. Maybe it's a little OpenBSDism but I think it's effective.
 
 - Gather documentation on when tags were added into the format.
 
 - Thorough testing (it's not really in the state for testing right now).
+
+Links/Resources:
+
+- [Adobe's swf file format spec](https://web.archive.org/web/20210609225053/https://www.adobe.com/content/dam/acom/en/devnet/pdf/swf-file-format-spec.pdf)
+- [Swf tags list](https://www.m2osw.com/swf_tags)
+- [JPEXS's FFDec's wiki page section for additional links](https://github.com/jindrapetrik/jpexs-decompiler/wiki/Links)
+
