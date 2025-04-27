@@ -5,10 +5,9 @@ Things to do and fix:
 
 - Check validity and the prototyped decompression functions, currently only accept a FILE pointer, make a separate family of functions for examining an already filled buffer and separate out the common parts into a different function.
 
-- Implement all the check functions for every single tag. (I'm currently in the process of implementing tags 0-25, you can choose a later batch and start working on that if you want).
-		Some ANTI-FEATURES(NOT for imageboard use):
-		2(a). Optional mp3/jpg/png/wav/svg/flv verification through third party programs. Anti feature in some ways but it's useful for personal use.
-		2(b). Optional recursive swf verification in DefineBinaryData tags.
+- Implement all the check functions for every single tag. (I'm currently in the process of implementing tags 0-25, you can choose a later batch and start working on that if you want). Some ANTI-FEATURES(NOT for imageboard use):
+    - 2(a). Optional mp3/jpg/png/wav/svg/flv verification through third party programs. Anti feature in some ways but it's useful for personal use.
+    - 2(b). Optional recursive swf verification in DefineBinaryData tags.
 
 - Implement the decompression functions, implement use of liblzma and zlib in the meanwhile. (Working on it too, but it's lower in priority)
 
