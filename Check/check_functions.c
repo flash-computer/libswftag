@@ -10,64 +10,7 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-int rect_parse(RECT *rect, pdata *state, char *rect_buf, size_t buf_size)
-{
-	rect->field_size = (rect_buf[0] & 0xF8)>>3;	// Since the byte is right aligned, works for higher values of CHAR_BIT just fine
-	if(buf_size < M_CEILDIV((5+(rect->field_size * 4)), 8))
-	{
-		return ESW_SHORTFILE;
-	}
-	int offset = 5;
-	int cur_beg, nex_beg;
-	UI32_TYPE *to_write;
-	for(int field = 0; field < 4; field++)
-	{
-		to_write = (((void *)rect) + sizeof(char) + field * sizeof(UI32_TYPE));
-		*to_write = 0;
-		cur_beg = (5 + (field)*(rect->field_size));
-		nex_beg = (5 + (field+1)*(rect->field_size));
-		while(offset < nex_beg)
-		{
-			unsigned char byte_left_bound = (offset == cur_beg)? (offset & 0x7) : 0;
-			unsigned char byte_right_bound = ((nex_beg - offset) <= (nex_beg & 0x7))? (nex_beg & 0x7) : 8;
-			unsigned char int_shift = rect->field_size - ((offset - cur_beg) + (byte_right_bound - byte_left_bound));
-			unsigned char byte_mask = ((~(unsigned char)0)<<(8-byte_right_bound)) & ((~(unsigned char)0)>>byte_left_bound) & 0xFF;
-			*to_write |= ((rect_buf[offset>>3] & byte_mask)>>(8-byte_right_bound))<<int_shift;
-		}
-	}
-
-	if(rect_buf[(5+(rect->field_size * 4))] & (((~(unsigned char)0) & 0xFF)>>((5+(rect->field_size * 4)) & 0x7)))
-	{
-		return(append_peculiarity(&(state->pec_list), state->pec_list_end, PEC_RECTPADDING, 0).ret);
-	}
-	return 0;
-}
-
-int file_header_verification(pdata *state)
-{
-	int ret = rect_parse(&(state->movie_rect), state, state->u_movie, state->movie_size);
-	if(ret)
-	{
-		return ret;
-	}
-
-	int offset_end = M_CEILDIV((5+(state->movie_rect.field_size * 4)), 8);
-	if(state->movie_size < offset_end + 4)
-	{
-		return ESW_SHORTFILE;
-	}
-
-	state->movie_fr_lo = state->u_movie[offset_end];
-	state->movie_fr_hi = state->u_movie[offset_end + 1];
-	state->movie_frame_count = state->u_movie[offset_end + 2];
-	state->movie_frame_count += ((int)(state->u_movie[offset_end + 3]))<<8;
-
-	state->tag_buffer = state->u_movie + offset_end + 4;
-
-	return 0;
-}
-
-err_ptr get_new_tag(char *buffer, pdata *state)
+err_ptr get_tag(char *buffer, pdata *state)
 {
 	if(M_BUF_BOUNDS_CHECK(buffer, 2, state))
 	{
@@ -103,18 +46,140 @@ err_ptr get_new_tag(char *buffer, pdata *state)
 // The struct that the pointer returns hasn't been made yet but it would be diagnostic struct outlining exactly what is wrong in case of an error.
 err_ptr check_tag(swf_tag *tag, pdata *state)
 {
+	if(!tag || !state)
+	{
+		return (err_ptr){NULL, EFN_ARGS};
+	}
+	if(!tag_valid(tag->tag))
+	{
+		return (err_ptr){NULL, ESW_TAG};	// In the future SWF structure errors would be instead turned into their own callback that can exit non_destructively. For now, it's an error.
+	}
+	err_int ret = tag_version_valid(tag->tag, state->version);
+	if(ER_ERROR(ret.ret))
+	{
+		return (err_ptr){NULL, ret.ret};
+	}
+	if(!ret.integer)
+	{
+		push_peculiarity(state, PEC_TIME_TRAVEL, tag->tag_data - state->u_movie);
+	}
+	// Check function calls and the rest of the stuff will go here
 	return (err_ptr){NULL, 0};
 }
 
+err_ptr spawn_tag(int tag, ui32 size, char *tag_data)
+{
+	if(!tag_valid(tag) && tag != F_FILEHEADER)
+	{
+		return (err_ptr){NULL, EFN_ARGS};
+	}
+	/*
+	 * --------------------------------------------------------------------------
+	 * --------------------------------------------------------------------------
+	 * --------------------------------------------------------------------------
+	Todo - Add additional verifications for tag_data and size
+	 * --------------------------------------------------------------------------
+	 * --------------------------------------------------------------------------
+	 * --------------------------------------------------------------------------
+	*/
+	swf_tag *new_tag = malloc(sizeof(swf_tag));
+	if(!new_tag)
+	{
+		return (err_ptr){NULL, EMM_ALLOC};
+	}
+	new_tag->tag = tag;
+	new_tag->size = size;
+	new_tag->tag_and_size = ((tag<<6) & 0xFFC0) | ((size > 62 || ((tag != F_FILEHEADER)? tag_long_exclusive(tag).integer : 0))? 0x3F : (size & 0x3F));
+	new_tag->tag_data = tag_data;
+	return (err_ptr){new_tag, 0};
+}
+
+err rect_parse(RECT *rect, pdata *state, char *rect_buf, size_t buf_size)
+{
+	rect->field_size = (rect_buf[0] & 0xF8)>>3;	// Since the byte is right aligned, works for higher values of CHAR_BIT just fine
+	if(buf_size < M_CEILDIV((5+(rect->field_size * 4)), 8))
+	{
+		return ESW_SHORTFILE;
+	}
+	int offset = 5;
+	int cur_beg, nex_beg;
+	UI32_TYPE *to_write;
+	for(int field = 0; field < 4; field++)
+	{
+		to_write = (((void *)rect) + sizeof(char) + field * sizeof(UI32_TYPE));
+		*to_write = 0;
+		cur_beg = (5 + (field)*(rect->field_size));
+		nex_beg = (5 + (field+1)*(rect->field_size));
+		while(offset < nex_beg)
+		{
+			unsigned char byte_left_bound = (offset == cur_beg)? (offset & 0x7) : 0;
+			unsigned char byte_right_bound = ((nex_beg - offset) <= (nex_beg & 0x7))? (nex_beg & 0x7) : 8;
+			unsigned char int_shift = rect->field_size - ((offset - cur_beg) + (byte_right_bound - byte_left_bound));
+			unsigned char byte_mask = ((~(unsigned char)0)<<(8-byte_right_bound)) & ((~(unsigned char)0)>>byte_left_bound) & 0xFF;
+			*to_write |= ((rect_buf[offset>>3] & byte_mask)>>(8-byte_right_bound))<<int_shift;
+		}
+	}
+
+	if(rect_buf[(5+(rect->field_size * 4))] & (((~(unsigned char)0) & 0xFF)>>((5+(rect->field_size * 4)) & 0x7)))
+	{
+		return(push_peculiarity(state, PEC_RECTPADDING, 0));
+	}
+	return 0;
+}
+
+err file_header_verification(pdata *state)
+{
+	err ret = rect_parse(&(state->movie_rect), state, state->u_movie, state->movie_size);
+	if(ret)
+	{
+		return ret;
+	}
+
+	int offset_end = M_CEILDIV((5+(state->movie_rect.field_size * 4)), 8);
+	if(state->movie_size < offset_end + 4)
+	{
+		return ESW_SHORTFILE;
+	}
+
+	state->movie_fr_lo = state->u_movie[offset_end];
+	state->movie_fr_hi = state->u_movie[offset_end + 1];
+	state->movie_frame_count = state->u_movie[offset_end + 2];
+	state->movie_frame_count += ((int)(state->u_movie[offset_end + 3]))<<8;
+
+	offset_end += 4;
+
+	state->tag_buffer = state->u_movie + offset_end;
+
+	err_ptr new_tag = spawn_tag(F_FILEHEADER, offset_end, state->u_movie);
+	if(ER_ERROR(new_tag.ret))
+	{
+		return new_tag.ret;
+	}
+
+	new_tag.ret = push_tag(state, new_tag.pointer);
+	if(ER_ERROR(new_tag.ret))
+	{
+		return new_tag.ret;
+	}
+
+	new_tag.ret = push_scope(state, new_tag.pointer);
+	if(ER_ERROR(new_tag.ret))
+	{
+		return new_tag.ret;
+	}
+
+	return 0;
+}
+
 // Checks tag stream
-int check_tag_stream(pdata *state)
+err check_tag_stream(pdata *state)
 {
 	state->tag_stream = NULL;
-	swf_tag_node *last_tag = NULL;
+	swf_tag *last_tag = NULL;
 	char *buffer = state->tag_buffer;
 	while(1)
 	{
-		err_ptr stream_val = get_new_tag(buffer, state);
+		err_ptr stream_val = get_tag(buffer, state);
 		if(stream_val.ret)
 		{
 			// Diagnostics go here, for now just free tag
@@ -130,17 +195,17 @@ int check_tag_stream(pdata *state)
 			// Diagnostics go here
 			return tag_ret.ret;
 		}
-		stream_val = append_tag(&(state->tag_stream), last_tag, (swf_tag*)(stream_val.pointer));
+		stream_val.ret = push_tag(state, (swf_tag*)(stream_val.pointer));
 		if(stream_val.ret)
 		{
-			free(stream_val.pointer);
 			return stream_val.ret;
 		}
-		last_tag = stream_val.pointer;
-		buffer = last_tag->tag.tag_data + last_tag->tag.size;
+		stream_val.pointer = state->tag_stream_end;
+		last_tag = (swf_tag *)(((dnode *)(stream_val.pointer))->data);
+		buffer = last_tag->tag_data + last_tag->size;
 		if(buffer > state->u_movie - state->movie_size)
 		{
-			if(last_tag->tag.tag != T_END)
+			if(last_tag->tag != T_END || state->scope_stack)
 			{
 				return ESW_IMPROPER;
 			}
@@ -149,10 +214,10 @@ int check_tag_stream(pdata *state)
 	}
 }
 
-int check_validity(pdata *state)
+err check_validity(pdata *state)
 {
 	/* An important thing to note is that every 8bit byte from the swf, is loaded into a separate byte on the machine, so irrespective of the size of CHAR_BIT, every char will only contain 8 bits from the file, right aligned */
-	int ret_err = file_header_verification(state);
+	err ret_err = file_header_verification(state);
 	if(ret_err)
 	{
 		return ret_err;
@@ -162,7 +227,7 @@ int check_validity(pdata *state)
 }
 
 // The FILE cursor should point at the beginning of the swf signature/file
-int check_file_validity(FILE *swf, pdata *state)
+err check_file_validity(FILE *swf, pdata *state)
 {
 	char signature[8];
 
@@ -183,7 +248,7 @@ int check_file_validity(FILE *swf, pdata *state)
 	}
 
 	state->compression = signature[0];
-	int ret_err;
+	err ret_err;
 
 	switch(state->compression)
 	{

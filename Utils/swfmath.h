@@ -12,6 +12,6 @@
 
 #define M_UNSIGNED_COMPARE(a, b) ((a == b) ? 0 : (a > b) ? 1 : -1)
 
-UI32_TYPE geti32(char *inp);
+ui32 geti32(char *inp);
 unsigned int geti16(char *inp);
 int signed_comparei32(UI32_TYPE comparand_a, UI32_TYPE comparand_b);
