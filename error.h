@@ -4,7 +4,13 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
+/* If the high byte is not zero, then it's not an error.
+ * Use ER_ERROR to check if the return value is an error
+ * use ER_TESTCATEGORY to check if the return value is an error belonging to a particular category
+*/
+
 /* Code 0 for every category is reserved for Miscellaneous errors that don't fit neatly under any preexisting category, with the exception of 0x00 */
+
 /* All codes are 1 byte long(0-255) to standardize the library for the default program, which returns the Error code as exit code which are limited to be one 8 bit byte on POSIX systems
    I don't know if that's part of the POSIX standard though, so if anybody can educate me, that'd be helpful */
 
@@ -31,10 +37,15 @@
 
 #define ALL_CLEAR	0x0		// All clear
 
-#define ER_TESTCATEGORY(code, category) (((code & 0xF0)^(category & 0xF0))?0:1)
+#define ER_ERROR(code) (!(code & 0xFF00) && (code & 0xFF))
+#define ER_TESTCATEGORY(code, category) ((((code & 0xF0)^(category & 0xF0))?0:1) && ER_ERROR(code))
+
 
 /*-----------------------------------------------------------Error Handler-----------------------------------------------------------*/
 /*----------------------------------------------------------Defined by user----------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-int error_handler(unsigned char code, pdata *state);
+err error_handler(err code, pdata *state);
+
+// While for now it's a void callback, I'm considering adding return values that control to some extent the flow where the peculiarity was identified. But this is definitely an anti-feature for security so that'll have to wait
+void callback_peculiarity(pdata *state, dnode *node);
