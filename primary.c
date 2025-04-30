@@ -6,22 +6,46 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-const static char *swf_tag_names = "Invalid Tag\0End\0ShowFrame\0DefineShape\0FreeCharacter\0PlaceObject\0RemoveObject\0DefineBitsJPEG\0DefineButton\0JPEGTables\0SetBackgroundColor\0DefineFont\0DefineText\0DoAction\0DefineFontInfo\0DefineSound\0StartSound/StopSound\0DefineButtonSound\0SoundStreamHead\0SoundStreamBlock\0DefineBitsLossless\0DefineBitsJPEG2\0DefineShape2\0DefineButtonCxform\0Protect\0PathsArePostscript\0PlaceObject2\0RemoveObject2\0SyncFrame\0FreeAll\0DefineShape3\0DefineText2\0DefineButton2\0DefineBitsJPEG3\0DefineBitsLossless2\0DefineEditText\0DefineVideo\0DefineSprite\0NameCharacter\0ProductInfo\0DefineTextFormat\0FrameLabel\0SoundStreamHead2\0DefineMorphShape\0GenerateFrame\0DefineFont2\0GeneratorCommand\0DefineCommandObject\0CharacterSet\0ExternalFont\0Export\0Import\0EnableDebugger\0DoInitAction\0DefineVideoStream\0VideoFrame\0DefineFontInfo2\0DebugID\0EnableDebugger2\0ScriptLimits\0SetTabIndex\0FileAttributes\0PlaceObject3\0Import2\0DoABCDefine\0DefineFontAlignZones\0CSMTextSettings\0DefineFont3\0SymbolClass\0Metadata\0DefineScalingGrid\0DoABC\0DefineShape4\0DefineMorphShape2\0DefineSceneAndFrameData\0DefineBinaryData\0DefineFontName\0DefineBitsJPEG4";
-const static int swf_tag_name_idx[] = {12,16,26,38,52,64,77,92,105,116,135,146,157,166,181,193,0,214,232,248,265,284,300,313,332,340,359,0,372,386,0,396,404,417,429,443,459,479,494,506,519,533,545,562,0,573,590,607,621,633,650,670,683,0,0,0,696,703,710,725,738,756,767,783,791,807,820,0,0,832,847,860,868,880,901,917,929,941,950,0,0,0,968,974,987,0,1005,1029,1046,0,1061};
-const static int swf_long_tag_exclusive[] = {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
-const static int swf_tag_intro_version[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 0, 3, 3, 0, 3, 3, 3, 3, 3, 3, 4, 4, 3, 3, 3, 1, 3, 0, 3, 3, 3, 3, 3, 5, 5, 5, 0, 0, 0, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 0, 0, 8, 8, 8, 9, 8, 8, 8, 9, 8, 8, 0, 0, 0, 9, 8, 8, 0, 9, 9, 9, 0, 10};
+struct tag_information
+{
+	char *name;
+	ui8 long_tag_exlusive;
+	ui8 intro_version;
+};
+
+static struct tag_information tag_info[] = {{"End", 0, 1}, {"ShowFrame", 0, 1}, {"DefineShape", 0, 1}, {"FreeCharacter", 0, 1}, {"PlaceObject", 0, 1}, {"RemoveObject", 0, 1}, {"DefineBitsJPEG", 1, 1}, {"DefineButton", 0, 1}, {"JPEGTables", 0, 1}, {"SetBackgroundColor", 0, 1}, {"DefineFont", 0, 1}, {"DefineText", 0, 1}, {"DoAction", 0, 1}, {"DefineFontInfo", 0, 1}, {"DefineSound", 0, 2}, {"StartSound/StopSound", 0, 2}, {"Invalid Tag", 0, 0}, {"DefineButtonSound", 0, 2}, {"SoundStreamHead", 0, 2}, {"SoundStreamBlock", 1, 2}, {"DefineBitsLossless", 1, 2}, {"DefineBitsJPEG2", 1, 2}, {"DefineShape2", 0, 2}, {"DefineButtonCxform", 0, 2}, {"Protect", 0, 2}, {"PathsArePostscript", 0, 3}, {"PlaceObject2", 0, 3}, {"Invalid Tag", 0, 0}, {"RemoveObject2", 0, 3}, {"SyncFrame", 0, 3}, {"Invalid Tag", 0, 0}, {"FreeAll", 0, 3}, {"DefineShape3", 0, 3}, {"DefineText2", 0, 3}, {"DefineButton2", 0, 3}, {"DefineBitsJPEG3", 1, 3}, {"DefineBitsLossless2", 1, 3}, {"DefineEditText", 0, 4}, {"DefineVideo", 0, 4}, {"DefineSprite", 0, 3}, {"NameCharacter", 0, 3}, {"ProductInfo", 0, 3}, {"DefineTextFormat", 0, 1}, {"FrameLabel", 0, 3}, {"Invalid Tag", 0, 0}, {"SoundStreamHead2", 0, 3}, {"DefineMorphShape", 0, 3}, {"GenerateFrame", 0, 3}, {"DefineFont2", 0, 3}, {"GeneratorCommand", 0, 3}, {"DefineCommandObject", 0, 5}, {"CharacterSet", 0, 5}, {"ExternalFont", 0, 5}, {"Invalid Tag", 0, 0}, {"Invalid Tag", 0, 0}, {"Invalid Tag", 0, 0}, {"Export", 0, 5}, {"Import", 0, 5}, {"EnableDebugger", 0, 5}, {"DoInitAction", 0, 6}, {"DefineVideoStream", 0, 6}, {"VideoFrame", 0, 6}, {"DefineFontInfo2", 0, 6}, {"DebugID", 0, 6}, {"EnableDebugger2", 0, 6}, {"ScriptLimits", 0, 7}, {"SetTabIndex", 0, 7}, {"Invalid Tag", 0, 0}, {"Invalid Tag", 0, 0}, {"FileAttributes", 0, 8}, {"PlaceObject3", 0, 8}, {"Import2", 0, 8}, {"DoABCDefine", 0, 9}, {"DefineFontAlignZones", 0, 8}, {"CSMTextSettings", 0, 8}, {"DefineFont3", 0, 8}, {"SymbolClass", 0, 9}, {"Metadata", 0, 8}, {"DefineScalingGrid", 0, 8}, {"Invalid Tag", 0, 0}, {"Invalid Tag", 0, 0}, {"Invalid Tag", 0, 0}, {"DoABC", 0, 9}, {"DefineShape4", 0, 8}, {"DefineMorphShape2", 0, 8}, {"Invalid Tag", 0, 0}, {"DefineSceneAndFrameData", 0, 9}, {"DefineBinaryData", 0, 9}, {"DefineFontName", 0, 9}, {"Invalid Tag", 0, 0}, {"DefineBitsJPEG4", 1, 10}};
 
 /*WARNING: Only use if you know what you're doing, use tag_valid(), tag_name(), tag_long_exclusive(), tag_version() and tag_version_valid() otherwise. They add an additional call but they do proper bounds checking and checking secondary variables.
 Inlining them is preferred to using these macros. ONLY use these when it is guranteed that the index lies between 0 and 90 inclusive.*/
-#define T_TagValid(index) (swf_tag_name_idx[index])?1:0
-#define T_TagName(index) (swf_tag_name_idx[index + 1] + swf_tag_names)
-#define T_TagLongExclusive(index) (swf_long_tag_exclusive[index])
-#define T_TagVersion(index) (swf_tag_intro_version[index])
-#define T_TagVersionValid(index, swf_ver) ((swf_tag_intro_version[index] && (swf_tag_intro_version[index] <= swf_ver)) ? 1 : 0)
+#define T_TagValid(index) (tag_info[index].intro_version)?1:0
+#define T_TagName(index) (tag_info[index].name)
+#define T_TagLongExclusive(index) (tag_info[index].long_tag_exlusive)
+#define T_TagVersion(index) (tag_info[index].intro_version)
+#define T_TagVersionValid(index, swf_ver) ((tag_info[index].intro_version && (tag_info[index].intro_version <= swf_ver)) ? 1 : 0)
 
 /*-------------------------------------------------------Data Access Functions-------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
+int tag_valid(int tag_code)
+{
+	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagValid(tag_code) : 0;
+}
+
+const char *tag_name(int tag_code)
+{
+	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagName(tag_code) : "Invalid Tag";
+}
+
+err_int tag_long_exclusive(int tag_code)
+{
+	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? (err_int){T_TagLongExclusive(tag_code), 0} : (err_int){0, EFN_ARGS};
+}
+
+err_int tag_version(int tag_code)
+{
+	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? (T_TagVersion(tag_code) ? (err_int){T_TagVersion(tag_code), 0} : (err_int){0, EFN_ARGS}) : (err_int){0, EFN_ARGS};
+}
 
 err_ptr append_list(dnode *node, size_t data_sz)
 {
@@ -69,26 +93,6 @@ err remove_list(dnode *node)
 	}
 	free(node);
 	return 0;
-}
-
-int tag_valid(int tag_code)
-{
-	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagValid(tag_code) : 0;
-}
-
-const char *tag_name(int tag_code)
-{
-	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagName(tag_code) : swf_tag_names;
-}
-
-err_int tag_long_exclusive(int tag_code)
-{
-	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? (err_int){T_TagLongExclusive(tag_code), 0} : (err_int){0, EFN_ARGS};
-}
-
-err_int tag_version(int tag_code)
-{
-	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? (T_TagVersion(tag_code) ? (err_int){T_TagVersion(tag_code), 0} : (err_int){0, EFN_ARGS}) : (err_int){0, EFN_ARGS};
 }
 
 err_int tag_version_valid(int tag_code, int swf_ver)	// TODO: update //
