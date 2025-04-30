@@ -33,6 +33,7 @@ err_ptr append_list(dnode *node, size_t data_sz)
 
 	new_node->prev = node;
 	new_node->data = (void *)new_node + sizeof(dnode);
+	new_node->to_free = NULL;
 
 	if(node)
 	{
@@ -53,6 +54,10 @@ err remove_list(dnode *node)
 	if(!node)
 	{
 		return EFN_ARGS;
+	}
+	if(node->to_free)
+	{
+		free_freelist(node->to_free);
 	}
 	if(node->prev)
 	{
@@ -116,7 +121,7 @@ err_ptr new_parse_data()
 
 // Linked list ops for pec_node linked lists
 // TODO: Implement add functions for pec_list and tag_stream to add nodes at any given node
-err push_peculiarity(pdata *state, unsigned int pattern, size_t offset)
+err push_peculiarity(pdata *state, ui16 pattern, size_t offset)
 {
 	if(!state)
 	{
@@ -202,6 +207,7 @@ err push_tag(pdata *state, swf_tag *new_tag)
 	swf_tag *node = ((dnode *)check_val.pointer)->data;
 	*node = *new_tag;
 	free(new_tag);
+	node->parent_node = check_val.pointer;
 
 	if(!(state->tag_stream))
 	{
@@ -296,3 +302,48 @@ err pop_scope(pdata *state)
 // Simply push and pop operations on the scope stack are not useful as that results in a loss of structure and you have to parse the swf stream again to figure it out, but I'm still hung up on how to optimally implement a stack that has the following features.
 // 1. It's trivial to judge what falls inside a given scope without having to parse it. The idea here is that when a T_END for the current scope is encountered, the address to that tag is tied up to the stack by a second pointer which does not delete higher elements.
 // 2. The problem here is that it would basically mean managing two stacks in one and given that one of the aims of this library is to be flexible, that would mean that destructive or constructive actions on the stack would be a mess.
+
+err_ptr alloc_push_freelist(size_t size, dnode *node)
+{
+	if(!node)
+	{
+		return (err_ptr){NULL, EFN_ARGS};
+	}
+	void *ret_ptr = malloc(size);
+	if(!ret_ptr)
+	{
+		return (err_ptr){NULL, EMM_ALLOC};
+	}
+
+	err_ptr ret_node = append_list(node->to_free, 0);
+	if(ER_ERROR(ret_node.ret))
+	{
+		S_FREE(ret_node.pointer);
+		S_FREE(ret_ptr);
+		return (err_ptr){NULL, ret_node.ret};
+	}
+	dnode *new_node = ret_node.pointer;
+	new_node->to_free = NULL;	// Making double sure
+	new_node->data = ret_ptr;
+	node->to_free = new_node;
+
+	return (err_ptr){ret_ptr, 0};
+}
+
+err free_freelist(dnode *to_free)
+{
+	dnode *temp;
+	err ret;
+	while(to_free)
+	{
+		temp = to_free;
+		to_free = to_free->prev;
+		S_FREE(temp->data);
+		ret = remove_list(temp);
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	return 0;
+}

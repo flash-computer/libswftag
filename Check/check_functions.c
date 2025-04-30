@@ -1,5 +1,6 @@
 #include"../swftag.h"
 #include"../error.h"
+#include"check_functions.h"
 #include"../Utils/swfmath.h"
 #include"../Utils/decompression.h"
 
@@ -94,55 +95,83 @@ err_ptr spawn_tag(int tag, ui32 size, char *tag_data)
 	return (err_ptr){new_tag, 0};
 }
 
-err rect_parse(RECT *rect, pdata *state, char *rect_buf, size_t buf_size)
+/*--------------------------------------------------------Parse substructures--------------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
+// TODO: Make these context aware by making them return err_int to output the size of the structure in bits and pass the swf_tag in arguments instead of limit because some substructures have additional properties based on that
+// Only for integrity checks in substructure parsing. ESW_SHORTFILE if errror
+#define C_BOUNDS_EVAL(tagbuffer, offset, pdata, limit) if(M_BUF_BOUNDS_CHECK(tagbuffer, offset, pdata))return ESW_SHORTFILE;if(limit < offset)return ESW_IMPROPER
+
+/* TODO : Spin out the bit matching logic into a separate function for all the other functions to analyze substructures that need it */
+err swf_rect_parse(RECT *rect, pdata *state, char *rect_buf, ui32 limit)
 {
+	C_BOUNDS_EVAL(rect_buf, 1, state, limit);
+
 	rect->field_size = (rect_buf[0] & 0xF8)>>3;	// Since the byte is right aligned, works for higher values of CHAR_BIT just fine
-	if(buf_size < M_CEILDIV((5+(rect->field_size * 4)), 8))
-	{
-		return ESW_SHORTFILE;
-	}
+
+	C_BOUNDS_EVAL(state->u_movie, M_ALIGN((5+(rect->field_size * 4)), 3), state, limit);
+
 	int offset = 5;
 	int cur_beg, nex_beg;
 	UI32_TYPE *to_write;
 	for(int field = 0; field < 4; field++)
 	{
-		to_write = (((void *)rect) + sizeof(char) + field * sizeof(UI32_TYPE));
+		to_write = (((void *)rect) + 1 + field * sizeof(UI32_TYPE));
 		*to_write = 0;
 		cur_beg = (5 + (field)*(rect->field_size));
 		nex_beg = (5 + (field+1)*(rect->field_size));
 		while(offset < nex_beg)
 		{
-			unsigned char byte_left_bound = (offset == cur_beg)? (offset & 0x7) : 0;
-			unsigned char byte_right_bound = ((nex_beg - offset) <= (nex_beg & 0x7))? (nex_beg & 0x7) : 8;
-			unsigned char int_shift = rect->field_size - ((offset - cur_beg) + (byte_right_bound - byte_left_bound));
-			unsigned char byte_mask = ((~(unsigned char)0)<<(8-byte_right_bound)) & ((~(unsigned char)0)>>byte_left_bound) & 0xFF;
+			ui8 byte_left_bound = (offset == cur_beg)? (offset & 0x7) : 0;
+			ui8 byte_right_bound = ((nex_beg - offset) <= (nex_beg & 0x7))? (nex_beg & 0x7) : 8;
+			ui8 int_shift = rect->field_size - ((offset - cur_beg) + (byte_right_bound - byte_left_bound));
+			ui8 byte_mask = ((~(ui8)0)<<(8-byte_right_bound)) & ((~(ui8)0)>>byte_left_bound) & 0xFF;
 			*to_write |= ((rect_buf[offset>>3] & byte_mask)>>(8-byte_right_bound))<<int_shift;
 		}
 	}
 
-	if(rect_buf[(5+(rect->field_size * 4))] & (((~(unsigned char)0) & 0xFF)>>((5+(rect->field_size * 4)) & 0x7)))
+	if(rect_buf[(5+(rect->field_size * 4))] & (((~(ui8)0) & 0xFF)>>((5+(rect->field_size * 4)) & 0x7)))
 	{
-		return(push_peculiarity(state, PEC_RECTPADDING, 0));
+		return push_peculiarity(state, PEC_RECTPADDING, 0);
 	}
 	return 0;
 }
 
+/* TODO : After the bit logic has been spun out from rect_parse, do this */
+err swf_matrix_parse(MATRIX *mat, pdata *state, char *mat_buf, ui32 limit)
+{
+	return 0;
+}
+
+/* TODO : After the bit logic has been spun out from rect_parse, do this */
+err swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, char *col_buf, ui32 limit)
+{
+	return 0;
+}
+
+#undef C_BOUNDS_EVAL
+
+/*---------------------------------------------------------Top-level parsing---------------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
 err file_header_verification(pdata *state)
 {
-	err ret = rect_parse(&(state->movie_rect), state, state->u_movie, state->movie_size);
-	if(ret)
+	err ret = swf_rect_parse(&(state->movie_rect), state, state->u_movie, state->movie_size);
+	if(ER_ERROR(ret))
 	{
 		return ret;
 	}
 
-	int offset_end = M_CEILDIV((5+(state->movie_rect.field_size * 4)), 8);
-	if(state->movie_size < offset_end + 4)
+	int offset_end = M_ALIGN((5+(state->movie_rect.field_size * 4)), 3);
+	if(M_BUF_BOUNDS_CHECK(state->u_movie, offset_end + 4, state))
 	{
 		return ESW_SHORTFILE;
 	}
 
-	state->movie_fr_lo = state->u_movie[offset_end];
-	state->movie_fr_hi = state->u_movie[offset_end + 1];
+	state->movie_fr.lo = state->u_movie[offset_end];
+	state->movie_fr.hi = state->u_movie[offset_end + 1];
 	state->movie_frame_count = state->u_movie[offset_end + 2];
 	state->movie_frame_count += ((int)(state->u_movie[offset_end + 3]))<<8;
 

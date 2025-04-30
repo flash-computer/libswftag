@@ -1,13 +1,12 @@
 #include"../swftag.h"
 
+#include<stdio.h>
+
 /*-------------------------------------------------------Functions, prototypes-------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-err check_invalidtag(swf_tag *tag_data, pdata *state)
-{
-	return ESW_TAG;
-}
+err check_invalidtag(swf_tag *tag_data, pdata *state);
 
 err check_end(swf_tag *tag_data, pdata *state);
 err check_showframe(swf_tag *tag_data, pdata *state);
@@ -93,7 +92,9 @@ err_ptr check_tag(swf_tag *tag, pdata *state);
 err_ptr spawn_tag(int tag, ui32 size, char *tag_data);
 err_ptr get_tag(char *buffer, pdata *state);
 
-err rect_parse(RECT *rect, pdata *state, char *rect_buf, size_t buf_size);
+err swf_rect_parse(RECT *rect, pdata *state, char *rect_buf, ui32 limit);
+err swf_matrix_parse(MATRIX *mat, pdata *state, char *mat_buf, ui32 limit);
+err swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, char *col_buf, ui32 limit);
 
 err file_header_verification(pdata *state);
 err check_tag_stream(pdata *state);

@@ -38,7 +38,7 @@
 #define ALL_CLEAR	0x0		// All clear
 
 #define ER_ERROR(code) (!(code & 0xFF00) && (code & 0xFF))
-#define ER_TESTCATEGORY(code, category) ((((code & 0xF0)^(category & 0xF0))?0:1) && ER_ERROR(code))
+#define ER_TESTCATEGORY(code, category) ((((code & 0xF0) ^ (category & 0xF0))? 0 : 1) && ER_ERROR(code))
 
 
 /*-----------------------------------------------------------Error Handler-----------------------------------------------------------*/

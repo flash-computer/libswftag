@@ -10,9 +10,9 @@ UI32_TYPE geti32(char *inp)
 	return ret_val;
 }
 
-unsigned int geti16(char *inp)
+ui16 geti16(char *inp)
 {
-	unsigned int ret_val = inp[0];
+	ui16 ret_val = inp[0];
 	ret_val += ((UI32_TYPE)inp[1])<<8;	// It's a little endian world in a byte-ordering agnostic language
 	return ret_val;
 }
