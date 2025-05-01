@@ -1,5 +1,5 @@
-#include"../swftag.h"
-#include"../error.h"
+#include"swftag.h"
+#include"error.h"
 #include<stdio.h>
 
 err movie_uncomp(FILE *swf, pdata *state);

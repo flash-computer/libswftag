@@ -1,5 +1,5 @@
-#include"../../swftag.h"
-#include"../../error.h"
+#include"../../Headers/swftag.h"
+#include"../../Headers/error.h"
 
 #include<stdlib.h>
 #include<stdio.h>

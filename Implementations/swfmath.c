@@ -1,5 +1,5 @@
-#include"../swftag.h"
-#include"swfmath.h"
+#include"../Headers/swftag.h"
+#include"../Headers/swfmath.h"
 
 UI32_TYPE geti32(char *inp)
 {

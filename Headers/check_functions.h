@@ -1,4 +1,4 @@
-#include"../swftag.h"
+#include"swftag.h"
 
 #include<stdio.h>
 

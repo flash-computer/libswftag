@@ -135,6 +135,16 @@
 		typedef SIZE_T size_t;
 	#endif
 
+	#ifndef UI16_TYPE
+		#define UI16_TYPE unsigned int
+		typedef UI16_TYPE ui16;
+	#endif
+
+	#ifndef UI8_TYPE
+		#define UI8_TYPE unsigned char
+		typedef UI8_TYPE ui8;
+	#endif
+
 #endif
 
 #define S_FREE(ptr)	if(ptr)free(ptr);ptr=NULL;
@@ -149,85 +159,7 @@
 
 // If you're scared about the choice of unsigned long long as UI32_TYPE, that's because as far as I understand the standard, long long is the only int type guaranteed to be atleast 4 bytes(32 bits for minimum value of CHAR_BIT being 8)
 // And unsigned to ensure uniformity in case it's bigger. The arithmetic ops in swfmath.h will treat it as signed because that's what the swf format does, virtually anywhere
-#ifndef STRUCT_DEFS
-	#define STRUCT_DEFS
-
-	struct doubly_linked_list_node
-	{
-		struct doubly_linked_list_node *next;
-		struct doubly_linked_list_node *prev;
-
-		void *data;
-	};
-	typedef struct doubly_linked_list_node dnode;
-
-	struct swf_rect
-	{
-		char field_size;
-		ui32 x_min;
-		ui32 y_min;
-		ui32 x_max;
-		ui32 y_max;
-	};
-	typedef struct swf_rect RECT;
-
-	struct parse_peculiarity
-	{
-		unsigned int pattern;
-		size_t offset;
-	};
-	typedef struct parse_peculiarity peculiar;
-
-	// Compound return types
-	struct return_pointer_with_error
-	{
-		void *pointer;
-		err ret;
-	};
-	typedef struct return_pointer_with_error err_ptr;
-
-	struct return_integer_with_error
-	{
-		ui32 integer;
-		err ret;
-	};
-	typedef struct return_integer_with_error err_int;
-
-	struct swf_tag
-	{
-		int tag;
-		ui32 size;
-		char *tag_data;
-		unsigned int tag_and_size;
-	};
-	typedef struct swf_tag swf_tag;
-
-	// FileHeader pseudo-tag and DefineSprite are the only tags for which a new swf_scope opens. END tags close the scope
-
-	struct parse_data
-	{
-		char compression;
-		char version;
-		ui32 movie_size;
-		char *u_movie;	// Uncompressed movie data
-
-		RECT movie_rect;
-		unsigned char movie_fr_hi;
-		unsigned char movie_fr_lo;
-		unsigned int movie_frame_count;
-
-		dnode *pec_list;	// List of parsing peculiarities that are not necessarily errors
-		dnode *pec_list_end;
-
-		char *tag_buffer;
-		dnode *tag_stream;
-		dnode *tag_stream_end;
-
-		dnode *scope_stack;
-	};
-	typedef struct parse_data pdata;
-
-#endif
+#include"tag_structs.h"
 
 /*-----------------------------------------------------------Peculiarities-----------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
@@ -238,7 +170,7 @@
 // Should not stop the straightforward work needed to get the basic verification running
 
 #define PEC_RECTPADDING 0x10	// Rect Padding isn't all 0s
-#define PEC_EMPTYTAG_SIZE 0x11	// Size of An empty tag isn't 0.
+#define PEC_TAG_EXTRA 0x11	// Size of tag exceeds what it needs
 #define PEC_MYTHICAL_TAG 0x12	// Tags not defined by the standard. No proper implementation available for these and thus these tags only raise a peculiarity and pass the checks
 #define PEC_TIME_TRAVEL 0x12	// Tag used in a version where it wasn't introduced yet
 
@@ -264,3 +196,6 @@ err remove_tag(pdata *state, dnode *node);
 
 err push_scope(pdata *state, dnode *tag);
 err pop_scope(pdata *state);
+
+err_ptr alloc_push_freelist(size_t size, dnode *node);
+err free_freelist(dnode *to_free);

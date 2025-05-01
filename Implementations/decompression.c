@@ -1,4 +1,5 @@
-#include"decompression.h"
+#include"../Headers/decompression.h"
+
 #include<stdlib.h>
 
 /*

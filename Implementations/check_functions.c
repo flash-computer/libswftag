@@ -1,8 +1,8 @@
-#include"../swftag.h"
-#include"../error.h"
-#include"check_functions.h"
-#include"../Utils/swfmath.h"
-#include"../Utils/decompression.h"
+#include"../Headers/swftag.h"
+#include"../Headers/error.h"
+#include"../Headers/check_functions.h"
+#include"../Headers/swfmath.h"
+#include"../Headers/decompression.h"
 
 #include<stdio.h>
 #include<stdlib.h>

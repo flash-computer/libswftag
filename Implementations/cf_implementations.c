@@ -1,7 +1,7 @@
-#include"../swftag.h"
-#include"../error.h"
-#include"check_functions.h"
-#include"../Utils/swfmath.h"
+#include"../Headers/swftag.h"
+#include"../Headers/error.h"
+#include"../Headers/check_functions.h"
+#include"../Headers/swfmath.h"
 
 #define ANALYZE_DEEP 0	// Placeholder flag to set whether or not to analyze tags in depth. Anti-feature for security and thus disabled by default
 
