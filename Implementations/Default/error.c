@@ -64,7 +64,7 @@ err error_handler(err code, pdata *state)
 {
 	if(!ER_ERROR(code))
 	{
-		return 0;
+		return code;
 	}
 	fprintf(stderr, "%s%s\n", (code & 0xF0)?FATAL_ERR_MSG:WARN_MSG, error_messages[(code & 0xF0)>>4][code & 0xF]);
 	exit(code);

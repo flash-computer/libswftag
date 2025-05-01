@@ -11,11 +11,11 @@ To implement:
 err movie_uncomp(FILE *swf, pdata *state)
 {
 	state->u_movie = malloc(state->movie_size);
-	if(state->u_movie)
+	if(!(state->u_movie))
 	{
 		return EMM_ALLOC;
 	}
-	if(fread(state->u_movie, 1, state->movie_size, swf) < state->movie_size)
+	if(fread(state->u_movie, 1, state->movie_size, swf) < state->movie_size - 7)
 	{
 		return EFL_READ;
 	}

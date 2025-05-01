@@ -64,11 +64,8 @@
 
 	struct swf_rect
 	{
+		ui32 fields[4];
 		ui8 field_size;
-		ui32 x_min;
-		ui32 y_min;
-		ui32 x_max;
-		ui32 y_max;
 	};
 	typedef struct swf_rect RECT;
 

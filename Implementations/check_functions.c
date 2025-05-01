@@ -17,7 +17,7 @@ err_ptr get_tag(char *buffer, pdata *state)
 	{
 		return (err_ptr){NULL, ESW_SHORTFILE};
 	}
-	swf_tag *tag = malloc(sizeof(tag));
+	swf_tag *tag = malloc(sizeof(swf_tag));
 	if(!tag)
 	{
 		return (err_ptr){NULL, EMM_ALLOC};
@@ -65,6 +65,11 @@ err_ptr check_tag(swf_tag *tag, pdata *state)
 		push_peculiarity(state, PEC_TIME_TRAVEL, tag->tag_data - state->u_movie);
 	}
 	// Check function calls and the rest of the stuff will go here
+	err ret_check = tag_check[tag->tag](tag, state);
+	if(ER_ERROR(ret_check))
+	{
+		return (err_ptr){NULL, ret_check};
+	}
 	return (err_ptr){NULL, 0};
 }
 
@@ -110,14 +115,14 @@ err swf_rect_parse(RECT *rect, pdata *state, char *rect_buf, ui32 limit)
 
 	rect->field_size = (rect_buf[0] & 0xF8)>>3;	// Since the byte is right aligned, works for higher values of CHAR_BIT just fine
 
-	C_BOUNDS_EVAL(state->u_movie, M_ALIGN((5+(rect->field_size * 4)), 3), state, limit);
+	C_BOUNDS_EVAL(state->u_movie, M_ALIGN((5+(rect->field_size * 4)), 3)>>3, state, limit);
 
 	int offset = 5;
 	int cur_beg, nex_beg;
-	UI32_TYPE *to_write;
+	ui32 *to_write;
 	for(int field = 0; field < 4; field++)
 	{
-		to_write = (((void *)rect) + 1 + field * sizeof(UI32_TYPE));
+		to_write = rect->fields + field;
 		*to_write = 0;
 		cur_beg = (5 + (field)*(rect->field_size));
 		nex_beg = (5 + (field+1)*(rect->field_size));
@@ -126,12 +131,15 @@ err swf_rect_parse(RECT *rect, pdata *state, char *rect_buf, ui32 limit)
 			ui8 byte_left_bound = (offset == cur_beg)? (offset & 0x7) : 0;
 			ui8 byte_right_bound = ((nex_beg - offset) <= (nex_beg & 0x7))? (nex_beg & 0x7) : 8;
 			ui8 int_shift = rect->field_size - ((offset - cur_beg) + (byte_right_bound - byte_left_bound));
-			ui8 byte_mask = ((~(ui8)0)<<(8-byte_right_bound)) & ((~(ui8)0)>>byte_left_bound) & 0xFF;
-			*to_write |= ((rect_buf[offset>>3] & byte_mask)>>(8-byte_right_bound))<<int_shift;
+			ui8 byte_mask = (((ui8)(~0))<<(8-byte_right_bound)) & (((ui8)(~0))>>byte_left_bound) & 0xFF;
+			ui32 read_byte = (((ui32)(rect_buf[offset>>3] & byte_mask)>>(8-byte_right_bound))<<int_shift);
+			*to_write |= (((rect_buf[offset>>3] & byte_mask)>>(8-byte_right_bound))<<int_shift);
+
+			offset += byte_right_bound - byte_left_bound;
 		}
 	}
 
-	if(rect_buf[(5+(rect->field_size * 4))] & (((~(ui8)0) & 0xFF)>>((5+(rect->field_size * 4)) & 0x7)))
+	if(rect_buf[(5+(rect->field_size * 4))>>3] & (((~(ui8)0) & 0xFF)>>((5+(rect->field_size * 4)) & 0x7)))
 	{
 		return push_peculiarity(state, PEC_RECTPADDING, 0);
 	}
@@ -164,7 +172,7 @@ err file_header_verification(pdata *state)
 		return ret;
 	}
 
-	int offset_end = M_ALIGN((5+(state->movie_rect.field_size * 4)), 3);
+	int offset_end = M_ALIGN((5+(state->movie_rect.field_size * 4)), 3)>>3;
 	if(M_BUF_BOUNDS_CHECK(state->u_movie, offset_end + 4, state))
 	{
 		return ESW_SHORTFILE;
@@ -172,8 +180,7 @@ err file_header_verification(pdata *state)
 
 	state->movie_fr.lo = state->u_movie[offset_end];
 	state->movie_fr.hi = state->u_movie[offset_end + 1];
-	state->movie_frame_count = state->u_movie[offset_end + 2];
-	state->movie_frame_count += ((int)(state->u_movie[offset_end + 3]))<<8;
+	state->movie_frame_count = geti16(state->u_movie + offset_end + 2);
 
 	offset_end += 4;
 
@@ -204,6 +211,7 @@ err file_header_verification(pdata *state)
 err check_tag_stream(pdata *state)
 {
 	state->tag_stream = NULL;
+	state->tag_stream_end = NULL;
 	swf_tag *last_tag = NULL;
 	char *buffer = state->tag_buffer;
 	while(1)
@@ -218,21 +226,23 @@ err check_tag_stream(pdata *state)
 			}
 			return stream_val.ret;
 		}
-		err_ptr tag_ret = check_tag(stream_val.pointer, state);
+
+		err ret_check = push_tag(state, stream_val.pointer);
+		if(ER_ERROR(ret_check))
+		{
+			return ret_check;
+		}
+
+		last_tag = (swf_tag *)(state->tag_stream_end->data);
+
+		err_ptr tag_ret = check_tag(last_tag, state);
 		if(tag_ret.ret)
 		{
 			// Diagnostics go here
 			return tag_ret.ret;
 		}
-		stream_val.ret = push_tag(state, (swf_tag*)(stream_val.pointer));
-		if(stream_val.ret)
-		{
-			return stream_val.ret;
-		}
-		stream_val.pointer = state->tag_stream_end;
-		last_tag = (swf_tag *)(((dnode *)(stream_val.pointer))->data);
 		buffer = last_tag->tag_data + last_tag->size;
-		if(buffer > state->u_movie - state->movie_size)
+		if(buffer > state->u_movie + state->movie_size)
 		{
 			if(last_tag->tag != T_END || state->scope_stack)
 			{
