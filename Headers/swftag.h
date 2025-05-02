@@ -145,6 +145,12 @@
 		typedef UI8_TYPE ui8;
 	#endif
 
+	#ifndef OTHER_TYPES
+		#define OTHER_TYPES
+
+		typedef unsigned char uchar;
+	#endif
+
 #endif
 
 #define S_FREE(ptr)	if(ptr)free(ptr);ptr=NULL;

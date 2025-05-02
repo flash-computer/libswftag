@@ -57,7 +57,7 @@ err_ptr append_list(dnode *node, size_t data_sz)
 	}
 
 	new_node->prev = node;
-	new_node->data = (void *)new_node + sizeof(dnode);
+	new_node->data = (void *)((uchar *)new_node + sizeof(dnode));
 	new_node->to_free = NULL;
 
 	if(node)

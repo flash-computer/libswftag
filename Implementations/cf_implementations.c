@@ -91,8 +91,8 @@ err check_placeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NO
 
 	C_TAG_BOUNDS_EVAL(base, 4);
 
-	tag_struct->id = geti16(base);
-	tag_struct->obj_depth = geti16(base + 2);
+	tag_struct->id = geti16((uchar *)base);
+	tag_struct->obj_depth = geti16((uchar *)base + 2);
 	tag_struct->has_color_transform = 0;
 	/*
 	TODO: Checks to verify these values?
@@ -135,8 +135,8 @@ err check_removeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 
 	C_TAG_BOUNDS_EVAL(base, 4);
 
-	tag_struct->id = geti16(base);
-	tag_struct->obj_depth = geti16(base + 2);
+	tag_struct->id = geti16((uchar *)base);
+	tag_struct->obj_depth = geti16((uchar *)base + 2);
 	/*
 	TODO: Checks to verify these values?
 	*/
@@ -157,7 +157,7 @@ err check_definebitsjpeg(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT
 
 	C_TAG_BOUNDS_EVAL(base, 2);
 
-	tag_struct->id = geti16(base);
+	tag_struct->id = geti16((uchar *)base);
 	if(ANALYZE_DEEP)
 	{
 		/*
@@ -177,7 +177,7 @@ err check_definebutton(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 	ui32 offset = 0;
 	C_TAG_BOUNDS_EVAL(base, 2);
 
-	ui16 id = geti16(base);
+	ui16 id = geti16((uchar *)base);
 	offset += 2;
 
 	// TODO: A lot, starting with defining it properly in tag_structs. The chain for it is a little big so I'm saving it for later
@@ -261,7 +261,7 @@ err check_definefontinfo(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT
 
 	C_TAG_BOUNDS_EVAL(base, 3);
 	offset += 3;
-	tag_struct->id = geti16(base);
+	tag_struct->id = geti16((uchar *)base);
 	tag_struct->name_length = base[2];
 
 	C_TAG_BOUNDS_EVAL(base+offset, base[2]);
@@ -390,7 +390,7 @@ err check_placeobject2(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 		{
 			return ESW_SHORTFILE;
 		}
-		flags = geti32(base);
+		flags = geti32((uchar *)base);
 	}
 
 	return 0;

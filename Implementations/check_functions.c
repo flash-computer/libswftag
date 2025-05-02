@@ -22,7 +22,7 @@ err_ptr get_tag(char *buffer, pdata *state)
 	{
 		return (err_ptr){NULL, EMM_ALLOC};
 	}
-	tag->tag_and_size = geti16(buffer);
+	tag->tag_and_size = geti16((uchar *)buffer);
 	tag->tag = (tag->tag_and_size & 0xFFC0)>>6;
 	tag->size = (tag->tag_and_size & 0x3F);
 	if(!tag_valid(tag->tag))
@@ -36,7 +36,7 @@ err_ptr get_tag(char *buffer, pdata *state)
 		{
 			return (err_ptr){tag, ESW_SHORTFILE};
 		}
-		tag->size = geti32(buffer + 2);
+		tag->size = geti32((uchar *)buffer + 2);
 		tag->tag_data = buffer + 6;
 	}
 	return (err_ptr){tag, 0};
@@ -117,28 +117,12 @@ err swf_rect_parse(RECT *rect, pdata *state, char *rect_buf, ui32 limit)
 
 	C_BOUNDS_EVAL(state->u_movie, M_ALIGN((5+(rect->field_size * 4)), 3)>>3, state, limit);
 
-	int offset = 5;
-	int cur_beg, nex_beg;
-	ui32 *to_write;
-	for(int field = 0; field < 4; field++)
+	ui8 offset = 5;
+	for(ui8 field = 0; field < 4; field++)
 	{
-		to_write = rect->fields + field;
-		*to_write = 0;
-		cur_beg = (5 + (field)*(rect->field_size));
-		nex_beg = (5 + (field+1)*(rect->field_size));
-		while(offset < nex_beg)
-		{
-			ui8 byte_left_bound = (offset == cur_beg)? (offset & 0x7) : 0;
-			ui8 byte_right_bound = ((nex_beg - offset) <= (nex_beg & 0x7))? (nex_beg & 0x7) : 8;
-			ui8 int_shift = rect->field_size - ((offset - cur_beg) + (byte_right_bound - byte_left_bound));
-			ui8 byte_mask = (((ui8)(~0))<<(8-byte_right_bound)) & (((ui8)(~0))>>byte_left_bound) & 0xFF;
-			ui32 read_byte = (((ui32)(rect_buf[offset>>3] & byte_mask)>>(8-byte_right_bound))<<int_shift);
-			*to_write |= (((rect_buf[offset>>3] & byte_mask)>>(8-byte_right_bound))<<int_shift);
-
-			offset += byte_right_bound - byte_left_bound;
-		}
+		rect->fields[field] = get_bitfield((uchar *)rect_buf, 5 + (rect->field_size * field), rect->field_size);
+		offset += rect->field_size;
 	}
-
 	if(rect_buf[(5+(rect->field_size * 4))>>3] & (((~(ui8)0) & 0xFF)>>((5+(rect->field_size * 4)) & 0x7)))
 	{
 		return push_peculiarity(state, PEC_RECTPADDING, 0);
@@ -180,7 +164,7 @@ err file_header_verification(pdata *state)
 
 	state->movie_fr.lo = state->u_movie[offset_end];
 	state->movie_fr.hi = state->u_movie[offset_end + 1];
-	state->movie_frame_count = geti16(state->u_movie + offset_end + 2);
+	state->movie_frame_count = geti16((uchar *)state->u_movie + offset_end + 2);
 
 	offset_end += 4;
 
@@ -274,7 +258,7 @@ err check_file_validity(FILE *swf, pdata *state)
 		return ESW_SIGNATURE;
 	}
 	state->version = signature[3];
-	state->movie_size = geti32(signature+4) - 8;	// We will be using these proxies for calculations because int size may differ from 32 bits
+	state->movie_size = geti32((uchar *)signature + 4) - 8;	// We will be using these proxies for calculations because int size may differ from 32 bits
 	if(signed_comparei32(state->movie_size, 0) <= 0)
 	{
 		return ESW_SIGNATURE;
