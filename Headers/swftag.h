@@ -184,7 +184,7 @@ err_int tag_long_exclusive(int tag_code);
 err_int tag_version(int tag_code);
 err_int tag_version_valid(int tag_code, int swf_ver);
 
-err_ptr new_parse_data();
+err init_parse_data(pdata *state);
 
 err push_peculiarity(pdata *state, unsigned int pattern, size_t offset);
 err pop_peculiarity(pdata *state);

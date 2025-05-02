@@ -98,7 +98,6 @@ err swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, char *col_buf
 
 err file_header_verification(pdata *state);
 err check_tag_stream(pdata *state);
-err check_validity(pdata *state);
 err check_file_validity(FILE *swf, pdata *state);
 
 /*------------------------------------------------------------Static Data------------------------------------------------------------*/

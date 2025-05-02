@@ -1,45 +1,43 @@
 options := -Wall -std=c99
 header_files := ./Headers/swftag.h ./Headers/tag_structs.h ./Headers/error.h ./Headers/decompression.h ./Headers/swfmath.h ./Headers/check_functions.h
 
-all: ./build/lib/optional/def_error.o ./build/lib/libswftag.a
+all: ../libswftag-build/lib/optional/def_error.o ../libswftag-build/lib/libswftag.a
 	echo ALL DONE!
 
-./build/lib/optional/def_error.o: ./Implementations/Default/error.c ./build/include ./build/lib/optional
+../libswftag-build/lib/optional/def_error.o: ./Implementations/Default/error.c ../libswftag-build/include ../libswftag-build/lib/optional
 	gcc $(options) -c $< -o $@
-./build/lib/optional: ./build/lib
+../libswftag-build/lib/optional: ../libswftag-build/lib
 	mkdir -p $@
 
-./build/lib/libswftag.a: ./build/obj/check_functions.o ./build/obj/implementations.o ./build/obj/primary.o ./build/obj/decompression.o ./build/obj/swfmath.o ./build/lib
+../libswftag-build/lib/libswftag.a: ../libswftag-build/obj/check_functions.o ../libswftag-build/obj/implementations.o ../libswftag-build/obj/primary.o ../libswftag-build/obj/decompression.o ../libswftag-build/obj/swfmath.o ../libswftag-build/lib
 	if [ -f '$@' ]; then rm -f '$@'; fi
-	ar rcs libswftag.a ./build/obj/check_functions.o ./build/obj/implementations.o ./build/obj/primary.o ./build/obj/decompression.o ./build/obj/swfmath.o
-	mv libswftag.a ./build/lib/
-	rm -r ./build/obj
-./build/lib:
+	ar rcs libswftag.a ../libswftag-build/obj/check_functions.o ../libswftag-build/obj/implementations.o ../libswftag-build/obj/primary.o ../libswftag-build/obj/decompression.o ../libswftag-build/obj/swfmath.o
+	mv libswftag.a ../libswftag-build/lib/
+	rm -r ../libswftag-build/obj
+../libswftag-build/lib:
 	mkdir -p '$@'
 
-./build/obj/things:
+../libswftag-build/obj/things:
 	touch '$@'
 
-./build/obj/implementations.o: ./Implementations/cf_implementations.c ./build/obj ./build/include
+../libswftag-build/obj/implementations.o: ./Implementations/cf_implementations.c ../libswftag-build/obj ../libswftag-build/include
 	gcc $(options) -c $< -o $@
-./build/obj/decompression.o: ./Implementations/decompression.c ./build/obj ./build/include
+../libswftag-build/obj/decompression.o: ./Implementations/decompression.c ../libswftag-build/obj ../libswftag-build/include
 	gcc $(options) -c $< -o $@
-./build/obj/swfmath.o: ./Implementations/swfmath.c ./build/obj ./build/include
+../libswftag-build/obj/swfmath.o: ./Implementations/swfmath.c ../libswftag-build/obj ../libswftag-build/include
 	gcc $(options) -c $< -o $@
-./build/obj/check_functions.o: ./Implementations/check_functions.c ./build/obj ./build/include
+../libswftag-build/obj/check_functions.o: ./Implementations/check_functions.c ../libswftag-build/obj ../libswftag-build/include
 	gcc $(options) -c $< -o $@
-./build/obj/primary.o: ./Implementations/primary.c ./build/obj ./build/include
+../libswftag-build/obj/primary.o: ./Implementations/primary.c ../libswftag-build/obj ../libswftag-build/include
 	gcc $(options) -c $< -o $@
 
 
-./build/obj: ./build
+../libswftag-build/obj: ../libswftag-build
 	mkdir -p $@
 
 
-./build/include: $(header_files)
+../libswftag-build/include: $(header_files)
 	mkdir -p $@
 	cp $^ '$@'
-./build:
+../libswftag-build:
 	mkdir $@
-
-

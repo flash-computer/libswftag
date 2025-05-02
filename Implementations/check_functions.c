@@ -212,6 +212,12 @@ err check_tag_stream(pdata *state)
 {
 	state->tag_stream = NULL;
 	state->tag_stream_end = NULL;
+	err ret_err = file_header_verification(state);
+	if(ret_err)
+	{
+		return ret_err;
+	}
+
 	swf_tag *last_tag = NULL;
 	char *buffer = state->tag_buffer;
 	while(1)
@@ -251,18 +257,6 @@ err check_tag_stream(pdata *state)
 			return 0;
 		}
 	}
-}
-
-err check_validity(pdata *state)
-{
-	/* An important thing to note is that every 8bit byte from the swf, is loaded into a separate byte on the machine, so irrespective of the size of CHAR_BIT, every char will only contain 8 bits from the file, right aligned */
-	err ret_err = file_header_verification(state);
-	if(ret_err)
-	{
-		return ret_err;
-	}
-
-	return check_tag_stream(state);
 }
 
 // The FILE cursor should point at the beginning of the swf signature/file
@@ -308,5 +302,5 @@ err check_file_validity(FILE *swf, pdata *state)
 		return ret_err;
 	}
 
-	return check_validity(state);
+	return check_tag_stream(state);
 }

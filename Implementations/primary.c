@@ -110,18 +110,28 @@ err_int tag_version_valid(int tag_code, int swf_ver)	// TODO: update //
 	return (err_int){ret.integer <= swf_ver, 0};
 }
 
-err_ptr new_parse_data()
+err init_parse_data(pdata *state)
 {
-	pdata *state = malloc(sizeof(pdata));
 	if(!state)
 	{
-		return (err_ptr){NULL, EMM_ALLOC};
+		return EFN_ARGS;
 	}
+	state->version = 0;
+	state->movie_size = 0;
+	state->avm1 = 0;
+	state->avm2 = 0;
+	state->movie_rect.field_size = 0;
+	state->movie_rect.fields[0] = state->movie_rect.fields[1] = state->movie_rect.fields[2] = state->movie_rect.fields[3] = 0;
+	state->movie_fr.hi = state->movie_fr.lo = 0;
+	state->movie_frame_count = 0;
 	state->u_movie = NULL;
 	state->pec_list = NULL;
 	state->pec_list_end = NULL;
+	state->tag_buffer = NULL;
 	state->tag_stream = NULL;
-	return (err_ptr){state, 0};
+	state->tag_stream_end = NULL;
+	state->scope_stack = NULL;
+	return 0;
 }
 
 // Linked list ops for pec_node linked lists
