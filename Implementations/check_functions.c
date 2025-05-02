@@ -248,7 +248,7 @@ err check_tag_stream(pdata *state)
 			return tag_ret.ret;
 		}
 		buffer = last_tag->tag_data + last_tag->size;
-		if(buffer > state->u_movie + state->movie_size)
+		if(buffer >= (state->u_movie + state->movie_size))
 		{
 			if(last_tag->tag != T_END || state->scope_stack)
 			{
@@ -274,7 +274,7 @@ err check_file_validity(FILE *swf, pdata *state)
 		return ESW_SIGNATURE;
 	}
 	state->version = signature[3];
-	state->movie_size = geti32(signature+4);	// We will be using these proxies for calculations because int size may differ from 32 bits
+	state->movie_size = geti32(signature+4) - 8;	// We will be using these proxies for calculations because int size may differ from 32 bits
 	if(signed_comparei32(state->movie_size, 0) <= 0)
 	{
 		return ESW_SIGNATURE;

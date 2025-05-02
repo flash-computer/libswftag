@@ -1,16 +1,16 @@
 #include"../Headers/swftag.h"
 #include"../Headers/swfmath.h"
 
-ui32 geti32(char *inp)
+ui32 geti32(unsigned char *inp)
 {
-	ui32 ret_val = inp[0];
+	ui32 ret_val = (ui8)inp[0];
 	ret_val += ((ui32)inp[1])<<8;
 	ret_val += ((ui32)inp[2])<<16;
 	ret_val += ((ui32)inp[3])<<24;
 	return ret_val;
 }
 
-ui16 geti16(char *inp)
+ui16 geti16(unsigned char *inp)
 {
 	ui16 ret_val = inp[0];
 	ret_val += ((ui32)inp[1])<<8;	// It's a little endian world in a byte-ordering agnostic language
