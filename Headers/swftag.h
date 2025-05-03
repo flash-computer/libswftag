@@ -178,7 +178,8 @@
 #define PEC_RECTPADDING 0x10	// Rect Padding isn't all 0s
 #define PEC_TAG_EXTRA 0x11	// Size of tag exceeds what it needs
 #define PEC_MYTHICAL_TAG 0x12	// Tags not defined by the standard. No proper implementation available for these and thus these tags only raise a peculiarity and pass the checks
-#define PEC_TIME_TRAVEL 0x12	// Tag used in a version where it wasn't introduced yet
+#define PEC_TIME_TRAVEL 0x13	// Tag used in a version where it wasn't introduced yet
+#define PEC_FILESIZE_SMALL 0x14	// File size smaller than advertized
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/

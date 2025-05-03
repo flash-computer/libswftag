@@ -316,7 +316,7 @@ err check_tag_stream(pdata *state)
 // The FILE cursor should point at the beginning of the swf signature/file
 err check_file_validity(FILE *swf, pdata *state)
 {
-	uchar signature[8];
+	uchar *signature = state->signature;
 
 	if(fread(signature, 1, 8, swf) < 8)
 	{

@@ -198,7 +198,10 @@
 		ui8 compression;
 		ui8 version;
 		ui32 movie_size;
+		uchar signature[8];
 		uchar *u_movie;	// Uncompressed movie data
+
+		ui32 read_movie_size;
 
 		ui8 avm1;
 		ui8 avm2;

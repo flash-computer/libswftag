@@ -118,6 +118,7 @@ err init_parse_data(pdata *state)
 	}
 	state->version = 0;
 	state->movie_size = 0;
+	state->read_movie_size = 0;
 	state->avm1 = 0;
 	state->avm2 = 0;
 	state->movie_rect.field_size = 0;
