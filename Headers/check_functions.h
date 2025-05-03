@@ -89,24 +89,13 @@ err check_definebitsjpeg4(swf_tag *tag_data, pdata *state);
 #define check_stopsound(data, state) check_startsound(data, state)
 
 err_ptr check_tag(swf_tag *tag, pdata *state);
-err_ptr spawn_tag(int tag, ui32 size, char *tag_data);
-err_ptr get_tag(char *buffer, pdata *state);
+err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data);
+err_ptr get_tag(uchar *buffer, pdata *state);
 
-err swf_rect_parse(RECT *rect, pdata *state, char *rect_buf, ui32 limit);
-err swf_matrix_parse(MATRIX *mat, pdata *state, char *mat_buf, ui32 limit);
-err swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, char *col_buf, ui32 limit);
+err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag);
+err_int swf_matrix_parse(MATRIX *mat, pdata *state, uchar *mat_buf, swf_tag *tag);
+err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *colt_buf, swf_tag *tag);
 
 err file_header_verification(pdata *state);
 err check_tag_stream(pdata *state);
 err check_file_validity(FILE *swf, pdata *state);
-
-/*------------------------------------------------------------Static Data------------------------------------------------------------*/
-/*-----------------------------------------------------------------------------------------------------------------------------------*/
-/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
-
-#ifndef CHECK_FUN_STATIC_ARRAY
-	#define CHECK_FUN_STATIC_ARRAY
-
-	static err (*tag_check[])(swf_tag *, pdata *state) = {&check_end, &check_showframe, &check_defineshape, &check_freecharacter, &check_placeobject, &check_removeobject, &check_definebitsjpeg, &check_definebutton, &check_jpegtables, &check_setbackgroundcolor, &check_definefont, &check_definetext, &check_doaction, &check_definefontinfo, &check_definesound, &check_startsound, &check_invalidtag, &check_definebuttonsound, &check_soundstreamhead, &check_soundstreamblock, &check_definebitslossless, &check_definebitsjpeg2, &check_defineshape2, &check_definebuttoncxform, &check_protect, &check_pathsarepostscript, &check_placeobject2, &check_invalidtag, &check_removeobject2, &check_syncframe, &check_invalidtag, &check_freeall, &check_defineshape3, &check_definetext2, &check_definebutton2, &check_definebitsjpeg3, &check_definebitslossless2, &check_defineedittext, &check_definevideo, &check_definesprite, &check_namecharacter, &check_productinfo, &check_definetextformat, &check_framelabel, &check_invalidtag, &check_soundstreamhead2, &check_definemorphshape, &check_generateframe, &check_definefont2, &check_generatorcommand, &check_definecommandobject, &check_characterset, &check_externalfont, &check_invalidtag, &check_invalidtag, &check_invalidtag, &check_export, &check_import, &check_enabledebugger, &check_doinitaction, &check_definevideostream, &check_videoframe, &check_definefontinfo2, &check_debugid, &check_enabledebugger2, &check_scriptlimits, &check_settabindex, &check_invalidtag, &check_invalidtag, &check_fileattributes, &check_placeobject3, &check_import2, &check_doabcdefine, &check_definefontalignzones, &check_csmtextsettings, &check_definefont3, &check_symbolclass, &check_metadata, &check_definescalinggrid, &check_invalidtag, &check_invalidtag, &check_invalidtag, &check_doabc, &check_defineshape4, &check_definemorphshape2, &check_invalidtag, &check_definesceneandframedata, &check_definebinarydata, &check_definefontname, &check_invalidtag, &check_definebitsjpeg4};
-
-#endif

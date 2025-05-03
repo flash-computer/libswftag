@@ -76,16 +76,16 @@
 		ui8 bitfields;
 
 		ui8 scale_bits;
-		fvar scale_x;
-		fvar scale_y;
+		f16_16 scale_x;
+		f16_16 scale_y;
 
 		ui8 rotate_bits;
-		fvar rotate_skew0;
-		fvar rotate_skew1;
+		f16_16 rotate_skew0;
+		f16_16 rotate_skew1;
 
 		ui8 translate_bits;
-		fvar translate_x;
-		fvar translate_y;
+		f16_16 translate_x;
+		f16_16 translate_y;
 	};
 	typedef struct swf_matrix MATRIX;
 
@@ -115,7 +115,7 @@
 		ui8 id;
 		ui16 action_length;
 
-		char *action_data;
+		uchar *action_data;
 	};
 	typedef struct swf_action ACTION;
 
@@ -183,7 +183,7 @@
 	{
 		int tag;
 		ui32 size;
-		char *tag_data;
+		uchar *tag_data;
 		ui16 tag_and_size;
 
 		void *tag_struct;
@@ -198,7 +198,7 @@
 		ui8 compression;
 		ui8 version;
 		ui32 movie_size;
-		char *u_movie;	// Uncompressed movie data
+		uchar *u_movie;	// Uncompressed movie data
 
 		ui8 avm1;
 		ui8 avm2;
@@ -211,7 +211,7 @@
 		dnode *pec_list;	// List of parsing peculiarities that are not necessarily errors
 		dnode *pec_list_end;
 
-		char *tag_buffer;
+		uchar *tag_buffer;
 		dnode *tag_stream;
 		dnode *tag_stream_end;
 
@@ -248,9 +248,9 @@
 		ui32 alpha_offset;
 		ui16 deblocking_filter_parameter;
 
-		char *encoding_tables;
-		char *image_data;
-		char *alpha;
+		uchar *encoding_tables;
+		uchar *image_data;
+		uchar *alpha;
 	};
 
 /*
@@ -266,7 +266,7 @@
 
 	struct swf_tag_jpegtables
 	{
-		char *data;
+		uchar *data;
 		swf_tag bind_tag;
 	};
 
@@ -307,7 +307,7 @@
 
 		ui16 id;	// Refers to the define font id. Map the define font tag with the matching id before the font info tag in the current stream to. If there are more than one tags with the same id, that's an error.
 		ui8 name_length;
-		char *name;
+		uchar *name;
 
 		// For font info 2
 		// V7+ small_text : 0x20
@@ -338,7 +338,7 @@
 		ui8 bitfields;
 
 		ui32 samples_count;
-		char *sound_data;
+		uchar *sound_data;
 	};
 
 #endif

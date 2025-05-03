@@ -11,7 +11,7 @@
 
 
 // These macros are not library features, they're here just to make implementation simpler within the check_functions
-#define C_TAG_BOUNDS_EVAL(buffer, offset) if(M_BUF_BOUNDS_CHECK(buffer, offset, state))return ESW_SHORTFILE;if(((char *)buffer + offset) > (tag_data->tag_data + tag_data->size))return ESW_IMPROPER
+#define C_TAG_BOUNDS_EVAL(buffer, offset) if(M_BUF_BOUNDS_CHECK(buffer, offset, state))return ESW_SHORTFILE;if(((uchar *)buffer + offset) > ((uchar *)(tag_data->tag_data) + tag_data->size))return ESW_IMPROPER
 
 // Yes it's horrible, but it's less horrible than other options imho
 #define C_INIT_TAG(newstruct) err_ptr tag_ret=alloc_push_freelist(sizeof(struct newstruct), tag_data->parent_node);if(ER_ERROR(tag_ret.ret))return tag_ret.ret;struct newstruct *tag_struct=tag_ret.pointer;tag_data->tag_struct=tag_struct
@@ -84,7 +84,7 @@ err check_placeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NO
 	{
 		return EFN_ARGS;
 	}
-	char *base = tag_data->tag_data;
+	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
 
 	C_INIT_TAG(swf_tag_placeobject);
@@ -98,24 +98,24 @@ err check_placeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NO
 	TODO: Checks to verify these values?
 	*/
 	offset += 4;
-	err ret = swf_matrix_parse(&(tag_struct->matrix), state, base + offset, tag_data->size - offset);
-	if(ER_ERROR(ret))
+	err_int ret = swf_matrix_parse(&(tag_struct->matrix), state, base + offset, tag_data);
+	if(ER_ERROR(ret.ret))
 	{
-		return ret;
+		return ret.ret;
 	}
-	offset += 2 + (tag_struct->matrix.bitfields & 0x1) * (5 + tag_struct->matrix.scale_bits * 2) + ((tag_struct->matrix.bitfields & 0x10)>>4) * (5 + tag_struct->matrix.rotate_bits * 2) + (5+ tag_struct->matrix.translate_bits * 2);
+	offset += ret.integer;
 
 	if(tag_data->size > offset)
 	{
-		ret = swf_color_transform_parse(&(tag_struct->color_transform), state, base + offset, tag_data->size - offset);
-		if(ER_ERROR(ret))
+		ret = swf_color_transform_parse(&(tag_struct->color_transform), state, base + offset, tag_data);
+		if(ER_ERROR(ret.ret))
 		{
 			/* Considering changing the return value here from an Error to expand into the non-zero-high-byte range of values as ESW errors will be spun out to have their own callback and this will break. But it's a little ugly so I need some time to think */
-			if(ret == ESW_IMPROPER)	// Aka the difference between the filesize and limit isn't enough to fit the substructure
+			if(ret.ret == ESW_IMPROPER)	// Aka the difference between the filesize and limit isn't enough to fit the substructure
 			{
 				return push_peculiarity(state, PEC_TAG_EXTRA, offset + (base - state->u_movie));
 			}
-			return ret;
+			return ret.ret;
 		}
 		tag_struct->has_color_transform = 1;
 		/* TODO: Check if there's more space after the COLOR_TRANSFORM. */
@@ -129,7 +129,7 @@ err check_removeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 	{
 		return EFN_ARGS;
 	}
-	char *base = tag_data->tag_data;
+	uchar *base = tag_data->tag_data;
 
 	C_INIT_TAG(swf_tag_removeobject);
 
@@ -149,7 +149,7 @@ err check_definebitsjpeg(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT
 	{
 		return EFN_ARGS;
 	}
-	char *base = tag_data->tag_data;
+	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
 
 	C_INIT_TAG(swf_tag_definebitsx);
@@ -173,7 +173,7 @@ err check_definebutton(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 	{
 		return EFN_ARGS;
 	}
-	char *base = tag_data->tag_data;
+	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
 	C_TAG_BOUNDS_EVAL(base, 2);
 
@@ -254,7 +254,7 @@ err check_definefontinfo(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT
 	{
 		return EFN_ARGS;
 	}
-	char *base = tag_data->tag_data;
+	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
 	C_INIT_TAG(swf_tag_fontinfox);
 	tag_struct->family_version = 1;
@@ -381,7 +381,7 @@ err check_placeobject2(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 	{
 		return EFN_ARGS;
 	}
-	char *base = tag_data->tag_data;
+	uchar *base = tag_data->tag_data;
 	ui16 flags = 0;
 	ui32 offset = 0;
 	if(state->version >= 8)

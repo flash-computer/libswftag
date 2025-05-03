@@ -13,8 +13,13 @@ ui32 geti32(uchar *inp)
 ui16 geti16(uchar *inp)
 {
 	ui16 ret_val = inp[0];
-	ret_val += ((ui32)inp[1])<<8;	// It's a little endian world in a byte-ordering agnostic language
+	ret_val += ((ui16)inp[1])<<8;	// It's a little endian world in a byte-ordering agnostic language
 	return ret_val;
+}
+
+f16_16 getf16_16(uchar *inp)
+{
+	return (f16_16){(((ui16)inp[3])<<8) | inp[2], (((ui16)inp[1])<<8) | inp[0]};
 }
 
 int signed_comparei32(ui32 comparand_a, ui32 comparand_b)
@@ -23,7 +28,7 @@ int signed_comparei32(ui32 comparand_a, ui32 comparand_b)
 	return (((comparand_a & sign_mask) == (comparand_b & sign_mask)) ? M_UNSIGNED_COMPARE(comparand_a, comparand_b) : (comparand_a & sign_mask) ? -1 : 1);
 }
 
-ui32 get_bitfield(uchar *buffer, ui8 base, ui8 offset)
+ui32 get_bitfield(uchar *buffer, ui32 base, ui8 offset)
 {
 	if(offset == 0)
 	{
@@ -52,6 +57,24 @@ ui32 get_bitfield(uchar *buffer, ui8 base, ui8 offset)
 		lo |= *itr;
 		itr++;
 	}
-	lo = (((hi>>srh)<<slh) | ((lo>>srl) & mask)) & mask;
-	return (lo | (((lo & 1<<(offset-1))>>(offset-1)) * (0xFFFFFFFF ^ ((1<<offset)-1))));	// Sign extension, to 32 bits exactly
+	return  ((((hi>>srh)<<slh) | ((lo>>srl) & mask)) & mask);
+}
+
+ui32 get_signed_bitfield(uchar *buffer, ui32 base, ui8 offset)
+{
+	ui32 ret = get_bitfield(buffer, base, offset);
+	return (ret | (((ret & 1<<(offset-1))>>(offset-1)) * (0xFFFFFFFF ^ ((1<<offset)-1))));	// Sign extension, to 32 bits exactly
+}
+
+f16_16 get_signed_bitfield_fixed(uchar *buffer, ui32 base, ui8 offset)	// The spec only defines signed fixed point values in bitfields
+{
+	ui32 raw = get_signed_bitfield(buffer, base, offset);
+	return (f16_16){(((raw & 0xFFFF0000)>>16) & 0xFFFF), (raw & 0xFFFF)};
+}
+
+ui8 get_bitfield_padding(uchar *buffer, ui32 base)
+{
+	uchar last = *(buffer + (base>>3));
+	uchar mask = (1<<(8 - (base & 0x7))) - 1;
+	return (last & mask);
 }

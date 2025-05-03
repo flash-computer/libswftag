@@ -7,11 +7,17 @@
 #include<stdio.h>
 #include<stdlib.h>
 
+/*------------------------------------------------------------Static Data------------------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
+static err (*tag_check[])(swf_tag *, pdata *state) = {&check_end, &check_showframe, &check_defineshape, &check_freecharacter, &check_placeobject, &check_removeobject, &check_definebitsjpeg, &check_definebutton, &check_jpegtables, &check_setbackgroundcolor, &check_definefont, &check_definetext, &check_doaction, &check_definefontinfo, &check_definesound, &check_startsound, &check_invalidtag, &check_definebuttonsound, &check_soundstreamhead, &check_soundstreamblock, &check_definebitslossless, &check_definebitsjpeg2, &check_defineshape2, &check_definebuttoncxform, &check_protect, &check_pathsarepostscript, &check_placeobject2, &check_invalidtag, &check_removeobject2, &check_syncframe, &check_invalidtag, &check_freeall, &check_defineshape3, &check_definetext2, &check_definebutton2, &check_definebitsjpeg3, &check_definebitslossless2, &check_defineedittext, &check_definevideo, &check_definesprite, &check_namecharacter, &check_productinfo, &check_definetextformat, &check_framelabel, &check_invalidtag, &check_soundstreamhead2, &check_definemorphshape, &check_generateframe, &check_definefont2, &check_generatorcommand, &check_definecommandobject, &check_characterset, &check_externalfont, &check_invalidtag, &check_invalidtag, &check_invalidtag, &check_export, &check_import, &check_enabledebugger, &check_doinitaction, &check_definevideostream, &check_videoframe, &check_definefontinfo2, &check_debugid, &check_enabledebugger2, &check_scriptlimits, &check_settabindex, &check_invalidtag, &check_invalidtag, &check_fileattributes, &check_placeobject3, &check_import2, &check_doabcdefine, &check_definefontalignzones, &check_csmtextsettings, &check_definefont3, &check_symbolclass, &check_metadata, &check_definescalinggrid, &check_invalidtag, &check_invalidtag, &check_invalidtag, &check_doabc, &check_defineshape4, &check_definemorphshape2, &check_invalidtag, &check_definesceneandframedata, &check_definebinarydata, &check_definefontname, &check_invalidtag, &check_definebitsjpeg4};
+
 /*-------------------------------------------------------------Functions-------------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-err_ptr get_tag(char *buffer, pdata *state)
+err_ptr get_tag(uchar *buffer, pdata *state)
 {
 	if(M_BUF_BOUNDS_CHECK(buffer, 2, state))
 	{
@@ -73,7 +79,7 @@ err_ptr check_tag(swf_tag *tag, pdata *state)
 	return (err_ptr){NULL, 0};
 }
 
-err_ptr spawn_tag(int tag, ui32 size, char *tag_data)
+err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data)
 {
 	if(!tag_valid(tag) && tag != F_FILEHEADER)
 	{
@@ -106,11 +112,19 @@ err_ptr spawn_tag(int tag, ui32 size, char *tag_data)
 
 // TODO: Make these context aware by making them return err_int to output the size of the structure in bits and pass the swf_tag in arguments instead of limit because some substructures have additional properties based on that
 // Only for integrity checks in substructure parsing. ESW_SHORTFILE if errror
-#define C_BOUNDS_EVAL(tagbuffer, offset, pdata, limit) if(M_BUF_BOUNDS_CHECK(tagbuffer, offset, pdata))return ESW_SHORTFILE;if(limit < offset)return ESW_IMPROPER
+#define C_BOUNDS_EVAL(tagbuffer, offset, pdata, limit) if(M_BUF_BOUNDS_CHECK(tagbuffer, offset, pdata))return (err_int){0, ESW_SHORTFILE};if(limit < offset)return (err_int){0, ESW_IMPROPER}
 
-/* TODO : Spin out the bit matching logic into a separate function for all the other functions to analyze substructures that need it */
-err swf_rect_parse(RECT *rect, pdata *state, char *rect_buf, ui32 limit)
+err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag)
 {
+	if(!state || !rect || !rect_buf)
+	{
+		return (err_int){0, EFN_ARGS};
+	}
+	ui32 limit = state->movie_size;
+	if(tag)		// Additional test for when the tag is F_FILEHEADER, and the argument consequently passed is null, later I'll separate out movie_rect, movie_frame_rate and movie_frame_count from pdata into a swf_pseudotag_fileheader struct, and then the tag it can just be any normal tag
+	{
+		ui32 limit = tag->size - (rect_buf - tag->tag_data);
+	}
 	C_BOUNDS_EVAL(rect_buf, 1, state, limit);
 
 	rect->field_size = (rect_buf[0] & 0xF8)>>3;	// Since the byte is right aligned, works for higher values of CHAR_BIT just fine
@@ -120,26 +134,82 @@ err swf_rect_parse(RECT *rect, pdata *state, char *rect_buf, ui32 limit)
 	ui8 offset = 5;
 	for(ui8 field = 0; field < 4; field++)
 	{
-		rect->fields[field] = get_bitfield((uchar *)rect_buf, 5 + (rect->field_size * field), rect->field_size);
+		rect->fields[field] = get_signed_bitfield((uchar *)rect_buf, 5 + (rect->field_size * field), rect->field_size);
 		offset += rect->field_size;
 	}
-	if(rect_buf[(5+(rect->field_size * 4))>>3] & (((~(ui8)0) & 0xFF)>>((5+(rect->field_size * 4)) & 0x7)))
+
+	if(get_bitfield_padding(rect_buf, offset))
 	{
-		return push_peculiarity(state, PEC_RECTPADDING, 0);
+		return (err_int){offset, push_peculiarity(state, PEC_RECTPADDING, (tag)? (tag->tag_data - state->u_movie) : 0)};
 	}
-	return 0;
+	return (err_int){offset, 0};
+}
+
+err_int swf_matrix_parse(MATRIX *mat, pdata *state, uchar *mat_buf, swf_tag *tag)
+{
+	if(!tag || !state || !mat || !mat_buf)
+	{
+		return (err_int){0, EFN_ARGS};
+	}
+	ui32 limit = tag->size - (mat_buf - tag->tag_data);
+	C_BOUNDS_EVAL(mat_buf, 1, state, limit);
+
+	mat->bitfields = 0;
+	ui32 offset = 1;
+	if(mat_buf[0] & 0x80)
+	{
+		mat->bitfields |= 0x1;
+		mat->scale_bits = get_bitfield(mat_buf, 1, 5);
+
+		C_BOUNDS_EVAL(mat_buf, M_ALIGN(6+mat->scale_bits * 2, 3)>>3, state, limit);
+
+		mat->scale_x = get_signed_bitfield_fixed(mat_buf, 6, mat->scale_bits);
+		mat->scale_y = get_signed_bitfield_fixed(mat_buf, 6 + mat->scale_bits, mat->scale_bits);
+		offset += 5 + (mat->scale_bits * 2);
+	}
+	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 1, 3)>>3, state, limit);
+
+	if(get_bitfield(mat_buf, offset, 1))
+	{
+		mat->bitfields |= 0x10;
+
+		C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 6, 3)>>3, state, limit);
+		mat->rotate_bits = get_bitfield(mat_buf, offset + 1, 5);
+
+		C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 6 + (mat->rotate_bits * 2), 3)>>3, state, limit);
+		mat->rotate_skew0 = get_signed_bitfield_fixed(mat_buf, 6 + offset, mat->rotate_bits);
+		mat->rotate_skew1 = get_signed_bitfield_fixed(mat_buf, 6 + offset + mat->rotate_bits, mat->rotate_bits);
+		offset += 5 + (mat->rotate_bits * 2);
+	}
+	offset++;
+
+	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 5, 3)>>3, state, limit);
+	mat->translate_bits = get_bitfield(mat_buf, offset + 1, 5);
+
+	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 5 + (mat->translate_bits * 2), 3)>>3, state, limit);
+	mat->translate_x = get_signed_bitfield_fixed(mat_buf, 5 + offset, mat->translate_bits);
+	mat->translate_y = get_signed_bitfield_fixed(mat_buf, 5 + offset + mat->translate_bits, mat->translate_bits);
+	offset += 5 + (mat->translate_bits * 2);
+
+	if(get_bitfield_padding(mat_buf, offset))
+	{
+		return (err_int){offset, push_peculiarity(state, PEC_RECTPADDING, 0)};
+	}
+
+	return (err_int){offset, 0};
 }
 
 /* TODO : After the bit logic has been spun out from rect_parse, do this */
-err swf_matrix_parse(MATRIX *mat, pdata *state, char *mat_buf, ui32 limit)
+err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *colt_buf, swf_tag *tag)
 {
-	return 0;
-}
+	if(!tag || !state || !colt || !colt_buf)
+	{
+		return (err_int){0, EFN_ARGS};
+	}
 
-/* TODO : After the bit logic has been spun out from rect_parse, do this */
-err swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, char *col_buf, ui32 limit)
-{
-	return 0;
+	ui32 limit = tag->size - (colt_buf - tag->tag_data);
+	ui32 offset = 0;
+	return (err_int){offset, 0};
 }
 
 #undef C_BOUNDS_EVAL
@@ -150,13 +220,13 @@ err swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, char *col_buf
 
 err file_header_verification(pdata *state)
 {
-	err ret = swf_rect_parse(&(state->movie_rect), state, state->u_movie, state->movie_size);
-	if(ER_ERROR(ret))
+	err_int ret = swf_rect_parse(&(state->movie_rect), state, (uchar *)state->u_movie, NULL);
+	if(ER_ERROR(ret.ret))
 	{
-		return ret;
+		return ret.ret;
 	}
 
-	int offset_end = M_ALIGN((5+(state->movie_rect.field_size * 4)), 3)>>3;
+	int offset_end = M_ALIGN((ret.integer), 3)>>3;
 	if(M_BUF_BOUNDS_CHECK(state->u_movie, offset_end + 4, state))
 	{
 		return ESW_SHORTFILE;
@@ -203,7 +273,7 @@ err check_tag_stream(pdata *state)
 	}
 
 	swf_tag *last_tag = NULL;
-	char *buffer = state->tag_buffer;
+	uchar *buffer = state->tag_buffer;
 	while(1)
 	{
 		err_ptr stream_val = get_tag(buffer, state);
@@ -232,7 +302,7 @@ err check_tag_stream(pdata *state)
 			return tag_ret.ret;
 		}
 		buffer = last_tag->tag_data + last_tag->size;
-		if(buffer >= (state->u_movie + state->movie_size))
+		if((uchar *)buffer >= (uchar *)(state->u_movie + state->movie_size))
 		{
 			if(last_tag->tag != T_END || state->scope_stack)
 			{
@@ -246,7 +316,7 @@ err check_tag_stream(pdata *state)
 // The FILE cursor should point at the beginning of the swf signature/file
 err check_file_validity(FILE *swf, pdata *state)
 {
-	char signature[8];
+	uchar signature[8];
 
 	if(fread(signature, 1, 8, swf) < 8)
 	{
