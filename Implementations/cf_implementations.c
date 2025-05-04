@@ -103,23 +103,20 @@ err check_placeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NO
 	{
 		return ret.ret;
 	}
-	offset += ret.integer;
+	offset += M_ALIGN(ret.integer, 3)>>3;
 
-	if(tag_data->size > offset)
+	ret = swf_color_transform_parse(&(tag_struct->color_transform), state, base + offset, tag_data);
+
+	if(ER_ERROR(ret.ret))
 	{
-		ret = swf_color_transform_parse(&(tag_struct->color_transform), state, base + offset, tag_data);
-		if(ER_ERROR(ret.ret))
-		{
-			/* Considering changing the return value here from an Error to expand into the non-zero-high-byte range of values as ESW errors will be spun out to have their own callback and this will break. But it's a little ugly so I need some time to think */
-			if(ret.ret == ESW_IMPROPER)	// Aka the difference between the filesize and limit isn't enough to fit the substructure
-			{
-				return push_peculiarity(state, PEC_TAG_EXTRA, offset + (base - state->u_movie));
-			}
-			return ret.ret;
-		}
-		tag_struct->has_color_transform = 1;
-		/* TODO: Check if there's more space after the COLOR_TRANSFORM. */
+		return ret.ret;
 	}
+	if(ret.integer)
+	{
+		tag_struct->has_color_transform = 1;
+	}
+
+	offset += M_ALIGN(ret.integer, 3)>>3;
 	return 0;
 }
 

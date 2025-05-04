@@ -96,17 +96,17 @@
 		ui8 bitfields;
 		ui8 color_bits;
 
-		ui16 red_mult;
-		ui16 green_mult;
-		ui16 blue_mult;
+		f16_16 red_mult;
+		f16_16 green_mult;
+		f16_16 blue_mult;
 
-		ui16 alpha_mult;
+		f16_16 alpha_mult;
 
-		ui16 red_add;
-		ui16 green_add;
-		ui16 blue_add;
+		f16_16 red_add;
+		f16_16 green_add;
+		f16_16 blue_add;
 
-		ui16 alpha_add;
+		f16_16 alpha_add;
 	};
 	typedef struct swf_color_transform COLOR_TRANSFORM;
 
@@ -127,32 +127,82 @@
 	};
 	typedef struct swf_rgb RGB;
 
-/*
-	struct swf_button
+	struct swf_rgba
 	{
-		// Only for version 8+
-		// blend_mode : 0x1
-		// filter_list : 0x10
+		ui8 red;
+		ui8 green;
+		ui8 blue;
+		ui8 alpha;
+	};
+	typedef struct swf_rgb RGBA;
+
+	struct swf_filter_blur
+	{
+		f16_16 horizontal_blur;
+		f16_16 vertical_blur;
+		ui8 passes;
+	};
+	typedef struct swf_filter_blur BLUR_FILTER;
+
+	struct swf_filter_colormatrix
+	{
+		float matrix[20];
+	};
+	typedef struct swf_filter_colormatrix COLORMATRIX_FILTER;
+
+	struct swf_filter_convolution
+	{
+		ui8 columns;
+		ui8 rows;
+		float divisor;
+		float bias;
+		float *weights;
+		RGBA default_color;
+		// Clamp : 0x1
+		// Preserve Alpha: 0x10
+		ui8 bitfields;
+	};
+	typedef struct swf_filter_convolution CONVOLUTION_FILTER;
+
+
+	struct swf_filter_glow
+	{
+		ui8 count;
+		RGBA *rgbas;
+		ui8 *position;
+		f16_16 horizontal_blur;
+		f16_16 vertical_blur;
+		f16_16 radian_angle;
+		f16_16 distance;
+
+		f8_8 glow_strength;
+
+		// inner_shadow: 0x1
+		// knock_out: 0x4
+		// composite_source: 0x10
+		// on_top: 0x40
 		ui8 bitfields;
 
-		// square_test : 0x1
-		// down : 0x4
-		// hover : 0x10
-		// up : 0x40
-		ui8 button_state;
-
-		ui16 id;
-		ui16 layer;
-		MATRIX matrix;
-
-		COLOR_TRANSFORM color_transform;
-
-		ui8 filter_count;
-		///////////////// FILTER filter;
-
-		ui8 blend_mode;
+		ui8 passes;
 	};
-*/
+	typedef struct swf_filter_glow GLOW_FILTER;
+
+	union swf_filter_any
+	{
+		BLUR_FILTER blur;
+		COLORMATRIX_FILTER colormatrix;
+		CONVOLUTION_FILTER convolution;
+		GLOW_FILTER glow;
+	};
+	typedef union swf_filter_any FILTER_ANY;
+
+	struct swf_filter
+	{
+		ui8 filter_type;
+		FILTER_ANY filter_data;
+	};
+	typedef struct swf_filter FILTER;
+
 
 /*--------------------------- LIB STRUCTS ---------------------------*/
 /*---------------------------------|---------------------------------*/
@@ -256,11 +306,30 @@
 		uchar *alpha;
 	};
 
-/*
-	swf_tag_definebutton
+	struct swf_tag_definebutton
 	{
+		// Only for version 8+
+		// blend_mode : 0x1
+		// filter_list : 0x10
+		ui8 bitfields;
+
+		// square_test : 0x1
+		// down : 0x4
+		// hover : 0x10
+		// up : 0x40
+		ui8 button_state;
+
+		ui16 id;
+		ui16 layer;
+		MATRIX matrix;
+
+		COLOR_TRANSFORM color_transform;
+
+		ui8 filter_count;
+		FILTER filter;
+
+		ui8 blend_mode;
 	};
-*/
 
 	struct swf_tag_setbackgroundcolor
 	{

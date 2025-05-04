@@ -117,6 +117,15 @@
 
 #define	F_FILEHEADER -1 // Not a real tag, just for ease of reference so we can treat it as one, borrowing from m2osw.com's convention (no idea if they were the ones who originated it though)
 
+#define FLTR_DROPSHADOW 0
+#define FLTR_BLUR 1
+#define FLTR_GLOW 2
+#define FLTR_BEVEL 3
+#define FLTR_GRADIENTGLOW 4
+#define FLTR_CONVOLUTION 5
+#define FLTR_COLORMATRIX 6
+#define FLTR_GRADIENTBEVEL 7
+
 #ifndef CUSTOM_TYPES
 	#define CUSTOM_TYPES
 

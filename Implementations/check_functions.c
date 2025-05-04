@@ -112,7 +112,7 @@ err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data)
 
 // TODO: Make these context aware by making them return err_int to output the size of the structure in bits and pass the swf_tag in arguments instead of limit because some substructures have additional properties based on that
 // Only for integrity checks in substructure parsing. ESW_SHORTFILE if errror
-#define C_BOUNDS_EVAL(tagbuffer, offset, pdata, limit) if(M_BUF_BOUNDS_CHECK(tagbuffer, offset, pdata))return (err_int){0, ESW_SHORTFILE};if(limit < offset)return (err_int){0, ESW_IMPROPER}
+#define C_BOUNDS_EVAL(tagbuffer, offset, pdata, limit, insuf_err) if(M_BUF_BOUNDS_CHECK(tagbuffer, offset, pdata))return (err_int){0, ESW_SHORTFILE};if(limit < offset)return (err_int){0, insuf_err}
 
 err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag)
 {
@@ -125,11 +125,11 @@ err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag)
 	{
 		ui32 limit = tag->size - (rect_buf - tag->tag_data);
 	}
-	C_BOUNDS_EVAL(rect_buf, 1, state, limit);
+	C_BOUNDS_EVAL(rect_buf, 1, state, limit, ESW_IMPROPER);
 
 	rect->field_size = (rect_buf[0] & 0xF8)>>3;	// Since the byte is right aligned, works for higher values of CHAR_BIT just fine
 
-	C_BOUNDS_EVAL(state->u_movie, M_ALIGN((5+(rect->field_size * 4)), 3)>>3, state, limit);
+	C_BOUNDS_EVAL(state->u_movie, M_ALIGN((5+(rect->field_size * 4)), 3)>>3, state, limit, ESW_IMPROPER);
 
 	ui8 offset = 5;
 	for(ui8 field = 0; field < 4; field++)
@@ -152,7 +152,15 @@ err_int swf_matrix_parse(MATRIX *mat, pdata *state, uchar *mat_buf, swf_tag *tag
 		return (err_int){0, EFN_ARGS};
 	}
 	ui32 limit = tag->size - (mat_buf - tag->tag_data);
-	C_BOUNDS_EVAL(mat_buf, 1, state, limit);
+
+	// Default values
+	mat->scale_x = (f16_16){1,0};
+	mat->scale_x = (f16_16){1,0};
+
+	mat->rotate_skew0 = (f16_16){0,0};
+	mat->rotate_skew1 = (f16_16){0,0};
+
+	C_BOUNDS_EVAL(mat_buf, 1, state, limit, ESW_IMPROPER);
 
 	mat->bitfields = 0;
 	ui32 offset = 1;
@@ -161,32 +169,32 @@ err_int swf_matrix_parse(MATRIX *mat, pdata *state, uchar *mat_buf, swf_tag *tag
 		mat->bitfields |= 0x1;
 		mat->scale_bits = get_bitfield(mat_buf, 1, 5);
 
-		C_BOUNDS_EVAL(mat_buf, M_ALIGN(6+mat->scale_bits * 2, 3)>>3, state, limit);
+		C_BOUNDS_EVAL(mat_buf, M_ALIGN(6+mat->scale_bits * 2, 3)>>3, state, limit, ESW_IMPROPER);
 
 		mat->scale_x = get_signed_bitfield_fixed(mat_buf, 6, mat->scale_bits);
 		mat->scale_y = get_signed_bitfield_fixed(mat_buf, 6 + mat->scale_bits, mat->scale_bits);
 		offset += 5 + (mat->scale_bits * 2);
 	}
-	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 1, 3)>>3, state, limit);
+	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 1, 3)>>3, state, limit, ESW_IMPROPER);
 
 	if(get_bitfield(mat_buf, offset, 1))
 	{
 		mat->bitfields |= 0x10;
 
-		C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 6, 3)>>3, state, limit);
+		C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 6, 3)>>3, state, limit, ESW_IMPROPER);
 		mat->rotate_bits = get_bitfield(mat_buf, offset + 1, 5);
 
-		C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 6 + (mat->rotate_bits * 2), 3)>>3, state, limit);
+		C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 6 + (mat->rotate_bits * 2), 3)>>3, state, limit, ESW_IMPROPER);
 		mat->rotate_skew0 = get_signed_bitfield_fixed(mat_buf, 6 + offset, mat->rotate_bits);
 		mat->rotate_skew1 = get_signed_bitfield_fixed(mat_buf, 6 + offset + mat->rotate_bits, mat->rotate_bits);
 		offset += 5 + (mat->rotate_bits * 2);
 	}
 	offset++;
 
-	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 5, 3)>>3, state, limit);
+	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 5, 3)>>3, state, limit, ESW_IMPROPER);
 	mat->translate_bits = get_bitfield(mat_buf, offset + 1, 5);
 
-	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 5 + (mat->translate_bits * 2), 3)>>3, state, limit);
+	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 5 + (mat->translate_bits * 2), 3)>>3, state, limit, ESW_IMPROPER);
 	mat->translate_x = get_signed_bitfield_fixed(mat_buf, 5 + offset, mat->translate_bits);
 	mat->translate_y = get_signed_bitfield_fixed(mat_buf, 5 + offset + mat->translate_bits, mat->translate_bits);
 	offset += 5 + (mat->translate_bits * 2);
@@ -208,7 +216,64 @@ err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *co
 	}
 
 	ui32 limit = tag->size - (colt_buf - tag->tag_data);
-	ui32 offset = 0;
+
+	// Default Values
+	colt->red_mult = (f16_16){1,0};
+	colt->green_mult = (f16_16){1,0};
+	colt->blue_mult = (f16_16){1,0};
+	colt->alpha_mult = (f16_16){1,0};
+
+	colt->red_add = (f16_16){0,0};
+	colt->green_add = (f16_16){0,0};
+	colt->blue_add = (f16_16){0,0};
+	colt->alpha_add = (f16_16){0,0};
+
+	C_BOUNDS_EVAL(colt_buf, 1, state, limit, 0);
+	colt->bitfields = get_bitfield(colt_buf, 0, 1);
+	colt->bitfields |= get_bitfield(colt_buf, 1, 1)<<4;
+	colt->color_bits = get_bitfield(colt_buf, 2, 4);
+
+	ui32 offset = 6;
+
+	if(colt->bitfields & 0x10)
+	{
+		C_BOUNDS_EVAL(colt_buf, M_ALIGN(offset + colt->color_bits * 3, 3)>>3, state, limit, 0);
+
+		colt->red_mult = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
+		colt->green_mult = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits, colt->color_bits);
+		colt->blue_mult = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits<<1, colt->color_bits);
+		offset += colt->color_bits * 3;
+		if(tag->tag == T_PLACEOBJECT2)
+		{
+			C_BOUNDS_EVAL(colt_buf, M_ALIGN(offset + colt->color_bits, 3)>>3, state, limit, 0);
+
+			colt->alpha_mult = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
+			offset += colt->color_bits;
+		}
+	}
+
+	if(colt->bitfields & 0x10)
+	{
+		C_BOUNDS_EVAL(colt_buf, M_ALIGN(offset + colt->color_bits * 3, 3)>>3, state, limit, 0);
+
+		colt->red_add = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
+		colt->green_add = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits, colt->color_bits);
+		colt->blue_add = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits<<1, colt->color_bits);
+		offset += colt->color_bits * 3;
+		if(tag->tag == T_PLACEOBJECT2)
+		{
+			C_BOUNDS_EVAL(colt_buf, M_ALIGN(offset + colt->color_bits, 3)>>3, state, limit, 0);
+
+			colt->alpha_add = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
+			offset += colt->color_bits;
+		}
+	}
+
+	if(get_bitfield_padding(colt_buf, offset))
+	{
+		return (err_int){offset, push_peculiarity(state, PEC_RECTPADDING, 0)};
+	}
+
 	return (err_int){offset, 0};
 }
 
