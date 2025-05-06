@@ -1,4 +1,4 @@
-options := -Wall -std=c99
+options := -Wall -std=c99 -pedantic
 header_files := ./Headers/swftag.h ./Headers/tag_structs.h ./Headers/error.h ./Headers/decompression.h ./Headers/swfmath.h ./Headers/check_functions.h
 
 all: ../libswftag-build/lib/optional/def_error.o ../libswftag-build/lib/libswftag.a

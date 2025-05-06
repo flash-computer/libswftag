@@ -25,26 +25,26 @@
 		ui16 hi;
 		ui16 lo;
 	};
-	typedef struct fixed16_16 f16_16;
+	typedef struct fixed16_16 uf16_16;
 
 	struct fixed8_8
 	{
 		ui8 hi;
 		ui8 lo;
 	};
-	typedef struct fixed8_8 f8_8;
+	typedef struct fixed8_8 uf8_8;
 
 	struct fixed32_32
 	{
 		ui32 hi;
 		ui32 lo;
 	};
-	typedef struct fixed32_32 f32_32;
+	typedef struct fixed32_32 uf32_32;
 
 	struct fixedvar
 	{
 		// Specified the width of the fixed point number in hi.lo format
-		f8_8 width;
+		uf8_8 width;
 		ui32 hi;
 		ui32 lo;
 	};
@@ -76,16 +76,16 @@
 		ui8 bitfields;
 
 		ui8 scale_bits;
-		f16_16 scale_x;
-		f16_16 scale_y;
+		uf16_16 scale_x;
+		uf16_16 scale_y;
 
 		ui8 rotate_bits;
-		f16_16 rotate_skew0;
-		f16_16 rotate_skew1;
+		uf16_16 rotate_skew0;
+		uf16_16 rotate_skew1;
 
 		ui8 translate_bits;
-		f16_16 translate_x;
-		f16_16 translate_y;
+		uf16_16 translate_x;
+		uf16_16 translate_y;
 	};
 	typedef struct swf_matrix MATRIX;
 
@@ -96,17 +96,17 @@
 		ui8 bitfields;
 		ui8 color_bits;
 
-		f16_16 red_mult;
-		f16_16 green_mult;
-		f16_16 blue_mult;
+		uf16_16 red_mult;
+		uf16_16 green_mult;
+		uf16_16 blue_mult;
 
-		f16_16 alpha_mult;
+		uf16_16 alpha_mult;
 
-		f16_16 red_add;
-		f16_16 green_add;
-		f16_16 blue_add;
+		uf16_16 red_add;
+		uf16_16 green_add;
+		uf16_16 blue_add;
 
-		f16_16 alpha_add;
+		uf16_16 alpha_add;
 	};
 	typedef struct swf_color_transform COLOR_TRANSFORM;
 
@@ -138,8 +138,8 @@
 
 	struct swf_filter_blur
 	{
-		f16_16 horizontal_blur;
-		f16_16 vertical_blur;
+		uf16_16 horizontal_blur;
+		uf16_16 vertical_blur;
 		ui8 passes;
 	};
 	typedef struct swf_filter_blur BLUR_FILTER;
@@ -170,12 +170,12 @@
 		ui8 count;
 		RGBA *rgbas;
 		ui8 *position;
-		f16_16 horizontal_blur;
-		f16_16 vertical_blur;
-		f16_16 radian_angle;
-		f16_16 distance;
+		uf16_16 horizontal_blur;
+		uf16_16 vertical_blur;
+		uf16_16 radian_angle;
+		uf16_16 distance;
 
-		f8_8 glow_strength;
+		uf8_8 glow_strength;
 
 		// inner_shadow: 0x1
 		// knock_out: 0x4
@@ -258,7 +258,7 @@
 
 		RECT movie_rect;
 		// 8.8 fixed point
-		f8_8 movie_fr;
+		uf8_8 movie_fr;
 		ui16 movie_frame_count;
 
 		dnode *pec_list;	// List of parsing peculiarities that are not necessarily errors

@@ -7,6 +7,11 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
+// Considering just making a global variable to handle temp error values on these macros but that seems contrived
+#define C_RAISE_ERR(error) ER_RAISE_ERROR_ERR(handler_ret, error, state)
+#define C_RAISE_ERR_PTR(pointer, error) ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, error, state)
+#define C_RAISE_ERR_INT(integer, error) ER_RAISE_ERROR_ERR_INT(handler_ret, integer, error, state)
+
 struct tag_information
 {
 	char *name;
@@ -28,7 +33,7 @@ Inlining them is preferred to using these macros. ONLY use these when it is gura
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-int tag_valid(int tag_code)
+ui8 tag_valid(int tag_code)
 {
 	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagValid(tag_code) : 0;
 }
@@ -38,22 +43,39 @@ const char *tag_name(int tag_code)
 	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagName(tag_code) : "Invalid Tag";
 }
 
-err_int tag_long_exclusive(int tag_code)
+ui8 tag_long_exclusive(int tag_code)
 {
-	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? (err_int){T_TagLongExclusive(tag_code), 0} : (err_int){0, EFN_ARGS};
+	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagLongExclusive(tag_code) : 0;
 }
 
-err_int tag_version(int tag_code)
+ui8 tag_version(int tag_code)
 {
-	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? (T_TagVersion(tag_code) ? (err_int){T_TagVersion(tag_code), 0} : (err_int){0, EFN_ARGS}) : (err_int){0, EFN_ARGS};
+	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagVersion(tag_code) : 0;
 }
 
-err_ptr append_list(dnode *node, size_t data_sz)
+err_int tag_version_compare(int tag_code, pdata *state)	// TODO: update with a concrete number for T_VER_MAX //
 {
+	err handler_ret;
+	ui8 swf_ver = state->version;
+	ui8 ver = tag_version(tag_code);
+	if(!ver)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	if(swf_ver < T_VER_MIN || swf_ver > T_VER_MAX)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	return (err_int){ver <= swf_ver, 0};
+}
+
+err_ptr append_list(pdata *state, dnode *node, size_t data_sz)
+{
+	err handler_ret;
 	dnode *new_node = malloc(sizeof(dnode) + data_sz);
 	if(!new_node)
 	{
-		return (err_ptr){NULL, EMM_ALLOC};
+		C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
 	}
 
 	new_node->prev = node;
@@ -74,15 +96,16 @@ err_ptr append_list(dnode *node, size_t data_sz)
 	return (err_ptr){new_node, 0};
 }
 
-err remove_list(dnode *node)
+err remove_list(pdata *state, dnode *node)
 {
+	err handler_ret;
 	if(!node)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(node->to_free)
 	{
-		free_freelist(node->to_free);
+		free_freelist(state, node->to_free);
 	}
 	if(node->prev)
 	{
@@ -96,25 +119,12 @@ err remove_list(dnode *node)
 	return 0;
 }
 
-err_int tag_version_valid(int tag_code, int swf_ver)	// TODO: update //
-{
-	err_int ret = tag_version(tag_code);
-	if(ER_ERROR(ret.ret))
-	{
-		return ret;
-	}
-	if(swf_ver < T_VER_MIN || swf_ver > T_VER_MAX)
-	{
-		return (err_int){0, EFN_ARGS};
-	}
-	return (err_int){ret.integer <= swf_ver, 0};
-}
-
 err init_parse_data(pdata *state)
 {
+	err handler_ret;
 	if(!state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	state->version = 0;
 	state->movie_size = 0;
@@ -139,11 +149,12 @@ err init_parse_data(pdata *state)
 // TODO: Implement add functions for pec_list and tag_stream to add nodes at any given node
 err push_peculiarity(pdata *state, ui16 pattern, size_t offset)
 {
+	err handler_ret;
 	if(!state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
-	err_ptr check_val = append_list(state->pec_list_end, sizeof(peculiar));
+	err_ptr check_val = append_list(state, state->pec_list_end, sizeof(peculiar));
 	if(ER_ERROR(check_val.ret))
 	{
 		S_FREE(check_val.pointer);
@@ -165,13 +176,14 @@ err push_peculiarity(pdata *state, ui16 pattern, size_t offset)
 
 err pop_peculiarity(pdata *state)
 {
+	err handler_ret;
 	if(!state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(!(state->pec_list_end))
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	dnode *to_free = state->pec_list_end;
 	state->pec_list_end = state->pec_list_end->prev;
@@ -179,18 +191,19 @@ err pop_peculiarity(pdata *state)
 	{
 		state->pec_list = NULL;
 	}
-	return remove_list(to_free);
+	return remove_list(state, to_free);
 }
 
 err remove_peculiarity(pdata *state, dnode *node)
 {
+	err handler_ret;
 	if(!state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(!node)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(node == state->pec_list_end)
 	{
@@ -200,21 +213,22 @@ err remove_peculiarity(pdata *state, dnode *node)
 	{
 		state->pec_list = state->pec_list->next;
 	}
-	return remove_list(node);
+	return remove_list(state, node);
 }
 
 // Linked list ops for swf_tag linked lists
 err push_tag(pdata *state, swf_tag *new_tag)
 {
+	err handler_ret;
 	if(!state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(!new_tag)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
-	err_ptr check_val = append_list(state->tag_stream_end, sizeof(swf_tag));
+	err_ptr check_val = append_list(state, state->tag_stream_end, sizeof(swf_tag));
 	if(ER_ERROR(check_val.ret))
 	{
 		S_FREE(check_val.pointer);
@@ -236,13 +250,14 @@ err push_tag(pdata *state, swf_tag *new_tag)
 
 err pop_tag(pdata *state)
 {
+	err handler_ret;
 	if(!state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(!(state->tag_stream_end))
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	dnode *to_free = state->tag_stream_end;
 	state->tag_stream_end = state->tag_stream_end->prev;
@@ -250,18 +265,19 @@ err pop_tag(pdata *state)
 	{
 		state->tag_stream = NULL;
 	}
-	return remove_list(to_free);
+	return remove_list(state, to_free);
 }
 
 err remove_tag(pdata *state, dnode *node)
 {
+	err handler_ret;
 	if(!state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(!node)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(node == state->tag_stream_end)
 	{
@@ -271,20 +287,21 @@ err remove_tag(pdata *state, dnode *node)
 	{
 		state->tag_stream = state->tag_stream->next;
 	}
-	return remove_list(node);
+	return remove_list(state, node);
 }
 
 err push_scope(pdata *state, dnode *tag)
 {
+	err handler_ret;
 	if(!state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(!tag)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
-	err_ptr check_val = append_list(state->scope_stack, 0);
+	err_ptr check_val = append_list(state, state->scope_stack, 0);
 	if(ER_ERROR(check_val.ret))
 	{
 		S_FREE(check_val.pointer);
@@ -299,18 +316,19 @@ err push_scope(pdata *state, dnode *tag)
 
 err pop_scope(pdata *state)
 {
+	err handler_ret;
 	if(!state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	if(!(state->scope_stack))
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	dnode *to_free = state->scope_stack;
 	state->scope_stack = state->scope_stack->prev;
 
-	return remove_list(to_free);
+	return remove_list(state, to_free);
 }
 
 // err tie_scope(pdata *state);
@@ -319,19 +337,21 @@ err pop_scope(pdata *state)
 // 1. It's trivial to judge what falls inside a given scope without having to parse it. The idea here is that when a T_END for the current scope is encountered, the address to that tag is tied up to the stack by a second pointer which does not delete higher elements.
 // 2. The problem here is that it would basically mean managing two stacks in one and given that one of the aims of this library is to be flexible, that would mean that destructive or constructive actions on the stack would be a mess.
 
-err_ptr alloc_push_freelist(size_t size, dnode *node)
+err_ptr alloc_push_freelist(pdata *state, size_t size, dnode *node)
 {
+
+	err handler_ret;
 	if(!node)
 	{
-		return (err_ptr){NULL, EFN_ARGS};
+		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
 	}
 	void *ret_ptr = malloc(size);
 	if(!ret_ptr)
 	{
-		return (err_ptr){NULL, EMM_ALLOC};
+		C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
 	}
 
-	err_ptr ret_node = append_list(node->to_free, 0);
+	err_ptr ret_node = append_list(state, node->to_free, 0);
 	if(ER_ERROR(ret_node.ret))
 	{
 		S_FREE(ret_node.pointer);
@@ -346,7 +366,7 @@ err_ptr alloc_push_freelist(size_t size, dnode *node)
 	return (err_ptr){ret_ptr, 0};
 }
 
-err free_freelist(dnode *to_free)
+err free_freelist(pdata *state, dnode *to_free)
 {
 	dnode *temp;
 	err ret;
@@ -355,7 +375,7 @@ err free_freelist(dnode *to_free)
 		temp = to_free;
 		to_free = to_free->prev;
 		S_FREE(temp->data);
-		ret = remove_list(temp);
+		ret = remove_list(state, temp);
 		if(ER_ERROR(ret))
 		{
 			return ret;
@@ -363,3 +383,7 @@ err free_freelist(dnode *to_free)
 	}
 	return 0;
 }
+
+#undef C_RAISE_ERR_INT
+#undef C_RAISE_ERR_PTR
+#undef C_RAISE_ERR

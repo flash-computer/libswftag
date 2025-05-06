@@ -17,8 +17,7 @@
 #define ESW_NIB_HI   0x80  // Swf structure errors
 #define ESW_SIGNATURE (0x1 | ESW_NIB_HI)  // Invalid Signature
 #define ESW_SHORTFILE (0x2 | ESW_NIB_HI) // File Ended abruptly
-#define ESW_TAG (0x3 | ESW_NIB_HI)  // Invalid Tag
-#define ESW_IMPROPER (0x4 | ESW_NIB_HI)   // Improper file
+#define ESW_IMPROPER (0x3 | ESW_NIB_HI)   // Improper file
 
 #define EFN_NIB_HI   0x60  // Program execution errors
 #define EFN_ARGS  (0x1 | EFN_NIB_HI)   // Malformed Arguments
@@ -40,6 +39,10 @@
 #define ER_ERROR(code) (!(code & 0xFF00) && (code & 0xFF))
 #define ER_TESTCATEGORY(code, category) ((((code & 0xF0) ^ (category & 0xF0))? 0 : 1) && ER_ERROR(code))
 
+// For convinience, don't consider these reliable library features
+#define ER_RAISE_ERROR_ERR(variable, error, pdata) (variable)=error_handler(error, pdata);if(ER_ERROR(variable))return(variable);
+#define ER_RAISE_ERROR_ERR_PTR(variable, pointer, error, pdata) (variable)=error_handler(error, pdata);if(ER_ERROR(variable))return((err_ptr){pointer, variable});
+#define ER_RAISE_ERROR_ERR_INT(variable, integer, error, pdata) (variable)=error_handler(error, pdata);if(ER_ERROR(variable))return((err_int){integer, variable});
 
 /*-----------------------------------------------------------Error Handler-----------------------------------------------------------*/
 /*----------------------------------------------------------Defined by user----------------------------------------------------------*/

@@ -7,6 +7,11 @@
 #include<stdio.h>
 #include<stdlib.h>
 
+// Considering just making a global variable to handle temp error values on these macros but that seems contrived
+#define C_RAISE_ERR(error) ER_RAISE_ERROR_ERR(handler_ret, error, state)
+#define C_RAISE_ERR_PTR(pointer, error) ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, error, state)
+#define C_RAISE_ERR_INT(integer, error) ER_RAISE_ERROR_ERR_INT(handler_ret, integer, error, state)
+
 /*------------------------------------------------------------Static Data------------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
@@ -19,28 +24,25 @@ static err (*tag_check[])(swf_tag *, pdata *state) = {&check_end, &check_showfra
 
 err_ptr get_tag(uchar *buffer, pdata *state)
 {
+	err handler_ret;
 	if(M_BUF_BOUNDS_CHECK(buffer, 2, state))
 	{
-		return (err_ptr){NULL, ESW_SHORTFILE};
+		C_RAISE_ERR_PTR(NULL, ESW_SHORTFILE);
 	}
 	swf_tag *tag = malloc(sizeof(swf_tag));
 	if(!tag)
 	{
-		return (err_ptr){NULL, EMM_ALLOC};
+		C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
 	}
 	tag->tag_and_size = geti16((uchar *)buffer);
 	tag->tag = (tag->tag_and_size & 0xFFC0)>>6;
 	tag->size = (tag->tag_and_size & 0x3F);
-	if(!tag_valid(tag->tag))
-	{
-		return (err_ptr){tag, ESW_TAG};	// Invalid Tag
-	}
 	tag->tag_data = buffer + 2;
-	if(tag->size == 63 || tag_long_exclusive(tag->tag).integer)
+	if(tag->size == 63 || tag_long_exclusive(tag->tag))
 	{
 		if(M_BUF_BOUNDS_CHECK(buffer, 4, state))
 		{
-			return (err_ptr){tag, ESW_SHORTFILE};
+			C_RAISE_ERR_PTR(tag, ESW_SHORTFILE);
 		}
 		tag->size = geti32((uchar *)buffer + 2);
 		tag->tag_data = buffer + 6;
@@ -53,37 +55,54 @@ err_ptr get_tag(uchar *buffer, pdata *state)
 // The struct that the pointer returns hasn't been made yet but it would be diagnostic struct outlining exactly what is wrong in case of an error.
 err_ptr check_tag(swf_tag *tag, pdata *state)
 {
+	err handler_ret;
 	if(!tag || !state)
 	{
-		return (err_ptr){NULL, EFN_ARGS};
+		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
 	}
-	if(!tag_valid(tag->tag))
+	ui8 real_tag = tag_valid(tag->tag);
+	if(!real_tag)
 	{
-		return (err_ptr){NULL, ESW_TAG};	// In the future SWF structure errors would be instead turned into their own callback that can exit non_destructively. For now, it's an error.
+		handler_ret = push_peculiarity(state, PEC_INVAL_TAG, tag->tag_data - state->u_movie);	// You can terminate at invalid tags in the callback here if you so wish
+		if(ER_ERROR(handler_ret))
+		{
+			return (err_ptr){NULL, handler_ret};
+		}
 	}
-	err_int ret = tag_version_valid(tag->tag, state->version);
-	if(ER_ERROR(ret.ret))
+	else
 	{
-		return (err_ptr){NULL, ret.ret};
-	}
-	if(!ret.integer)
-	{
-		push_peculiarity(state, PEC_TIME_TRAVEL, tag->tag_data - state->u_movie);
+		err_int ret = tag_version_compare(tag->tag, state);
+		if(ER_ERROR(ret.ret))
+		{
+			return (err_ptr){NULL, ret.ret};
+		}
+		if(!ret.integer)
+		{
+			handler_ret = push_peculiarity(state, PEC_TIME_TRAVEL, tag->tag_data - state->u_movie);
+			if(ER_ERROR(handler_ret))
+			{
+				return (err_ptr){NULL, handler_ret};
+			}
+		}
 	}
 	// Check function calls and the rest of the stuff will go here
-	err ret_check = tag_check[tag->tag](tag, state);
-	if(ER_ERROR(ret_check))
+	if(real_tag)
 	{
-		return (err_ptr){NULL, ret_check};
+		err ret_check = tag_check[tag->tag](tag, state);
+		if(ER_ERROR(ret_check))
+		{
+			return (err_ptr){NULL, ret_check};
+		}
 	}
 	return (err_ptr){NULL, 0};
 }
 
-err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data)
+err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data, pdata *state)
 {
+	err handler_ret;
 	if(!tag_valid(tag) && tag != F_FILEHEADER)
 	{
-		return (err_ptr){NULL, EFN_ARGS};
+		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
 	}
 	/*
 	 * --------------------------------------------------------------------------
@@ -97,11 +116,11 @@ err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data)
 	swf_tag *new_tag = malloc(sizeof(swf_tag));
 	if(!new_tag)
 	{
-		return (err_ptr){NULL, EMM_ALLOC};
+		C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
 	}
 	new_tag->tag = tag;
 	new_tag->size = size;
-	new_tag->tag_and_size = ((tag<<6) & 0xFFC0) | ((size > 62 || ((tag != F_FILEHEADER)? tag_long_exclusive(tag).integer : 0))? 0x3F : (size & 0x3F));
+	new_tag->tag_and_size = ((tag<<6) & 0xFFC0) | ((size > 62 || ((tag != F_FILEHEADER)? tag_long_exclusive(tag) : 0))? 0x3F : (size & 0x3F));
 	new_tag->tag_data = tag_data;
 	return (err_ptr){new_tag, 0};
 }
@@ -112,13 +131,14 @@ err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data)
 
 // TODO: Make these context aware by making them return err_int to output the size of the structure in bits and pass the swf_tag in arguments instead of limit because some substructures have additional properties based on that
 // Only for integrity checks in substructure parsing. ESW_SHORTFILE if errror
-#define C_BOUNDS_EVAL(tagbuffer, offset, pdata, limit, insuf_err) if(M_BUF_BOUNDS_CHECK(tagbuffer, offset, pdata))return (err_int){0, ESW_SHORTFILE};if(limit < offset)return (err_int){0, insuf_err}
+#define C_BOUNDS_EVAL(tagbuffer, offset, pdata, limit, insuf_err) if(M_BUF_BOUNDS_CHECK(tagbuffer, offset, pdata)){C_RAISE_ERR_INT(0, ESW_SHORTFILE);}if(limit < offset){C_RAISE_ERR_INT(0, insuf_err);}
 
 err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag)
 {
+	err handler_ret;
 	if(!state || !rect || !rect_buf)
 	{
-		return (err_int){0, EFN_ARGS};
+		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
 	ui32 limit = state->movie_size;
 	if(tag)		// Additional test for when the tag is F_FILEHEADER, and the argument consequently passed is null, later I'll separate out movie_rect, movie_frame_rate and movie_frame_count from pdata into a swf_pseudotag_fileheader struct, and then the tag it can just be any normal tag
@@ -147,18 +167,19 @@ err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag)
 
 err_int swf_matrix_parse(MATRIX *mat, pdata *state, uchar *mat_buf, swf_tag *tag)
 {
+	err handler_ret;
 	if(!tag || !state || !mat || !mat_buf)
 	{
-		return (err_int){0, EFN_ARGS};
+		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
 	ui32 limit = tag->size - (mat_buf - tag->tag_data);
 
 	// Default values
-	mat->scale_x = (f16_16){1,0};
-	mat->scale_x = (f16_16){1,0};
+	mat->scale_x = (uf16_16){1,0};
+	mat->scale_x = (uf16_16){1,0};
 
-	mat->rotate_skew0 = (f16_16){0,0};
-	mat->rotate_skew1 = (f16_16){0,0};
+	mat->rotate_skew0 = (uf16_16){0,0};
+	mat->rotate_skew1 = (uf16_16){0,0};
 
 	C_BOUNDS_EVAL(mat_buf, 1, state, limit, ESW_IMPROPER);
 
@@ -207,26 +228,26 @@ err_int swf_matrix_parse(MATRIX *mat, pdata *state, uchar *mat_buf, swf_tag *tag
 	return (err_int){offset, 0};
 }
 
-/* TODO : After the bit logic has been spun out from rect_parse, do this */
 err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *colt_buf, swf_tag *tag)
 {
+	err handler_ret;
 	if(!tag || !state || !colt || !colt_buf)
 	{
-		return (err_int){0, EFN_ARGS};
+		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
 
 	ui32 limit = tag->size - (colt_buf - tag->tag_data);
 
 	// Default Values
-	colt->red_mult = (f16_16){1,0};
-	colt->green_mult = (f16_16){1,0};
-	colt->blue_mult = (f16_16){1,0};
-	colt->alpha_mult = (f16_16){1,0};
+	colt->red_mult = (uf16_16){1,0};
+	colt->green_mult = (uf16_16){1,0};
+	colt->blue_mult = (uf16_16){1,0};
+	colt->alpha_mult = (uf16_16){1,0};
 
-	colt->red_add = (f16_16){0,0};
-	colt->green_add = (f16_16){0,0};
-	colt->blue_add = (f16_16){0,0};
-	colt->alpha_add = (f16_16){0,0};
+	colt->red_add = (uf16_16){0,0};
+	colt->green_add = (uf16_16){0,0};
+	colt->blue_add = (uf16_16){0,0};
+	colt->alpha_add = (uf16_16){0,0};
 
 	C_BOUNDS_EVAL(colt_buf, 1, state, limit, 0);
 	colt->bitfields = get_bitfield(colt_buf, 0, 1);
@@ -241,7 +262,7 @@ err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *co
 
 		colt->red_mult = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
 		colt->green_mult = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits, colt->color_bits);
-		colt->blue_mult = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits<<1, colt->color_bits);
+		colt->blue_mult = get_signed_bitfield_fixed(colt_buf, offset + (colt->color_bits<<1), colt->color_bits);
 		offset += colt->color_bits * 3;
 		if(tag->tag == T_PLACEOBJECT2)
 		{
@@ -258,7 +279,7 @@ err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *co
 
 		colt->red_add = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
 		colt->green_add = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits, colt->color_bits);
-		colt->blue_add = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits<<1, colt->color_bits);
+		colt->blue_add = get_signed_bitfield_fixed(colt_buf, offset + (colt->color_bits<<1), colt->color_bits);
 		offset += colt->color_bits * 3;
 		if(tag->tag == T_PLACEOBJECT2)
 		{
@@ -285,6 +306,7 @@ err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *co
 
 err file_header_verification(pdata *state)
 {
+	err handler_ret;
 	err_int ret = swf_rect_parse(&(state->movie_rect), state, (uchar *)state->u_movie, NULL);
 	if(ER_ERROR(ret.ret))
 	{
@@ -294,7 +316,7 @@ err file_header_verification(pdata *state)
 	int offset_end = M_ALIGN((ret.integer), 3)>>3;
 	if(M_BUF_BOUNDS_CHECK(state->u_movie, offset_end + 4, state))
 	{
-		return ESW_SHORTFILE;
+		C_RAISE_ERR(ESW_SHORTFILE);
 	}
 
 	state->movie_fr.lo = state->u_movie[offset_end];
@@ -305,7 +327,7 @@ err file_header_verification(pdata *state)
 
 	state->tag_buffer = state->u_movie + offset_end;
 
-	err_ptr new_tag = spawn_tag(F_FILEHEADER, offset_end, state->u_movie);
+	err_ptr new_tag = spawn_tag(F_FILEHEADER, offset_end, state->u_movie, state);
 	if(ER_ERROR(new_tag.ret))
 	{
 		return new_tag.ret;
@@ -326,9 +348,11 @@ err file_header_verification(pdata *state)
 	return 0;
 }
 
+// TODO: Better bounds checking near the end after false size reporting is handled
 // Checks tag stream
 err check_tag_stream(pdata *state)
 {
+	err handler_ret;
 	state->tag_stream = NULL;
 	state->tag_stream_end = NULL;
 	err ret_err = file_header_verification(state);
@@ -371,7 +395,7 @@ err check_tag_stream(pdata *state)
 		{
 			if(last_tag->tag != T_END || state->scope_stack)
 			{
-				return ESW_IMPROPER;
+				C_RAISE_ERR(ESW_IMPROPER);
 			}
 			return 0;
 		}
@@ -381,22 +405,23 @@ err check_tag_stream(pdata *state)
 // The FILE cursor should point at the beginning of the swf signature/file
 err check_file_validity(FILE *swf, pdata *state)
 {
+	err handler_ret;
 	uchar *signature = state->signature;
 
 	if(fread(signature, 1, 8, swf) < 8)
 	{
-		return EFL_READ;
+		C_RAISE_ERR(EFL_READ);
 	}
 
 	if(signature[1] != 'W' || signature [2] != 'S')		// Not using short because we abide by standards to the best of our abilities here
 	{
-		return ESW_SIGNATURE;
+		C_RAISE_ERR(ESW_SIGNATURE);
 	}
 	state->version = signature[3];
 	state->movie_size = geti32((uchar *)signature + 4) - 8;	// We will be using these proxies for calculations because int size may differ from 32 bits
 	if(signed_comparei32(state->movie_size, 0) <= 0)
 	{
-		return ESW_SIGNATURE;
+		C_RAISE_ERR(ESW_SIGNATURE);
 	}
 
 	state->compression = signature[0];
@@ -414,7 +439,7 @@ err check_file_validity(FILE *swf, pdata *state)
 			ret_err = movie_lzma(swf, state);
 			break;
 		default:
-			return ESW_SIGNATURE;
+			C_RAISE_ERR(ESW_SIGNATURE);
 	}
 	if(ret_err)
 	{
@@ -423,3 +448,7 @@ err check_file_validity(FILE *swf, pdata *state)
 
 	return check_tag_stream(state);
 }
+
+#undef C_RAISE_ERR_INT
+#undef C_RAISE_ERR_PTR
+#undef C_RAISE_ERR

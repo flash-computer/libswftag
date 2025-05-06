@@ -189,18 +189,22 @@
 #define PEC_MYTHICAL_TAG 0x12	// Tags not defined by the standard. No proper implementation available for these and thus these tags only raise a peculiarity and pass the checks
 #define PEC_TIME_TRAVEL 0x13	// Tag used in a version where it wasn't introduced yet
 #define PEC_FILESIZE_SMALL 0x14	// File size smaller than advertized
+#define PEC_INVAL_TAG 0x15	// Invalid tag encountered
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-int tag_valid(int tag_code);
+ui8 tag_valid(int tag_code);
 const char *tag_name(int tag_code);
-err_int tag_long_exclusive(int tag_code);
-err_int tag_version(int tag_code);
-err_int tag_version_valid(int tag_code, int swf_ver);
+ui8 tag_long_exclusive(int tag_code);
+ui8 tag_version(int tag_code);
+err_int tag_version_compare(int tag_code, pdata *state);
 
 err init_parse_data(pdata *state);
+
+err_ptr append_list(pdata *state, dnode *node, size_t data_sz);
+err remove_list(pdata *state, dnode *node);
 
 err push_peculiarity(pdata *state, unsigned int pattern, size_t offset);
 err pop_peculiarity(pdata *state);
@@ -213,5 +217,5 @@ err remove_tag(pdata *state, dnode *node);
 err push_scope(pdata *state, dnode *tag);
 err pop_scope(pdata *state);
 
-err_ptr alloc_push_freelist(size_t size, dnode *node);
-err free_freelist(dnode *to_free);
+err_ptr alloc_push_freelist(pdata *state, size_t size, dnode *node);
+err free_freelist(pdata *state, dnode *to_free);

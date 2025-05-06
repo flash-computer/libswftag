@@ -89,7 +89,7 @@ err check_definebitsjpeg4(swf_tag *tag_data, pdata *state);
 #define check_stopsound(data, state) check_startsound(data, state)
 
 err_ptr check_tag(swf_tag *tag, pdata *state);
-err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data);
+err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data, pdata *state);
 err_ptr get_tag(uchar *buffer, pdata *state);
 
 err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag);

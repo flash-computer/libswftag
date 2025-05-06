@@ -66,6 +66,7 @@ err error_handler(err code, pdata *state)
 	{
 		return code;
 	}
+	// Ideally, you'd want ESW class of errors to be handled here.
 	fprintf(stderr, "%s%s\n", (code & 0xF0)?FATAL_ERR_MSG:WARN_MSG, error_messages[(code & 0xF0)>>4][code & 0xF]);
 	exit(code);
 }

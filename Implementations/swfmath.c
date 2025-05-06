@@ -17,9 +17,14 @@ ui16 geti16(uchar *inp)
 	return ret_val;
 }
 
-f16_16 getf16_16(uchar *inp)
+uf16_16 getuf16_16(uchar *inp)
 {
-	return (f16_16){(((ui16)inp[3])<<8) | inp[2], (((ui16)inp[1])<<8) | inp[0]};
+	return (uf16_16){(((ui16)inp[3])<<8) | (ui16)inp[2], (((ui16)inp[1])<<8) | (ui16)inp[0]};
+}
+
+uf8_8 getuf8_8(uchar *inp)
+{
+	return (uf8_8){(ui8)inp[1], (ui8)inp[0]};
 }
 
 int signed_comparei32(ui32 comparand_a, ui32 comparand_b)
@@ -66,10 +71,10 @@ ui32 get_signed_bitfield(uchar *buffer, ui32 base, ui8 offset)
 	return (ret | (((ret & 1<<(offset-1))>>(offset-1)) * (0xFFFFFFFF ^ ((1<<offset)-1))));	// Sign extension, to 32 bits exactly
 }
 
-f16_16 get_signed_bitfield_fixed(uchar *buffer, ui32 base, ui8 offset)	// The spec only defines signed fixed point values in bitfields
+uf16_16 get_signed_bitfield_fixed(uchar *buffer, ui32 base, ui8 offset)	// The spec only defines signed fixed point values in bitfields
 {
 	ui32 raw = get_signed_bitfield(buffer, base, offset);
-	return (f16_16){(((raw & 0xFFFF0000)>>16) & 0xFFFF), (raw & 0xFFFF)};
+	return (uf16_16){(((raw & 0xFFFF0000)>>16) & 0xFFFF), (raw & 0xFFFF)};
 }
 
 ui8 get_bitfield_padding(uchar *buffer, ui32 base)

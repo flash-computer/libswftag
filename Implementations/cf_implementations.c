@@ -9,29 +9,34 @@
 // the whole structure of the swf should be optionally accessible and editable through the tag stream, so this is something to note for the future.
 // All optional ofcourse.
 
+// Considering just making a global variable to handle temp error values on these macros but that seems contrived
+#define C_RAISE_ERR(error) ER_RAISE_ERROR_ERR(handler_ret, error, state)
+#define C_RAISE_ERR_PTR(pointer, error) ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, error, state)
+#define C_RAISE_ERR_INT(integer, error) ER_RAISE_ERROR_ERR_INT(handler_ret, integer, error, state)
 
 // These macros are not library features, they're here just to make implementation simpler within the check_functions
-#define C_TAG_BOUNDS_EVAL(buffer, offset) if(M_BUF_BOUNDS_CHECK(buffer, offset, state))return ESW_SHORTFILE;if(((uchar *)buffer + offset) > ((uchar *)(tag_data->tag_data) + tag_data->size))return ESW_IMPROPER
+#define C_TAG_BOUNDS_EVAL(buffer, offset) if(M_BUF_BOUNDS_CHECK(buffer, offset, state))return C_RAISE_ERR(ESW_SHORTFILE);if(((uchar *)buffer + offset) > ((uchar *)(tag_data->tag_data) + tag_data->size))return C_RAISE_ERR(ESW_IMPROPER);
 
 // Yes it's horrible, but it's less horrible than other options imho
-#define C_INIT_TAG(newstruct) err_ptr tag_ret=alloc_push_freelist(sizeof(struct newstruct), tag_data->parent_node);if(ER_ERROR(tag_ret.ret))return tag_ret.ret;struct newstruct *tag_struct=tag_ret.pointer;tag_data->tag_struct=tag_struct
+#define C_INIT_TAG(newstruct) err_ptr tag_ret=alloc_push_freelist(state, sizeof(struct newstruct), tag_data->parent_node);if(ER_ERROR(tag_ret.ret))return tag_ret.ret;struct newstruct *tag_struct=tag_ret.pointer;tag_data->tag_struct=tag_struct
 
 err check_invalidtag(swf_tag *tag_data, pdata *state)
 {
-	return ESW_TAG;
+	return push_peculiarity(state, PEC_INVAL_TAG, tag_data->tag_data - state->u_movie);
 }
 
 err check_end(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 
 	if(tag_data->size)
 	{
 		err ret = push_peculiarity(state, PEC_TAG_EXTRA, tag_data->tag_data - state->u_movie);
-		if(ret)
+		if(ER_ERROR(ret))
 		{
 			return ret;
 		}
@@ -42,15 +47,16 @@ err check_end(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISH
 
 err check_showframe(swf_tag *tag_data, pdata *state) //--DONE--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 
 	if(tag_data->size)
 	{
 		err ret = push_peculiarity(state, PEC_TAG_EXTRA, tag_data->tag_data - state->u_movie);
-		if(ret)
+		if(ER_ERROR(ret))
 		{
 			return ret;
 		}
@@ -61,18 +67,20 @@ err check_showframe(swf_tag *tag_data, pdata *state) //--DONE--//
 
 err check_defineshape(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_freecharacter(swf_tag *tag_data, pdata *state) //--DONE--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	push_peculiarity(state, PEC_MYTHICAL_TAG, tag_data->tag_data - state->u_movie);
 	return 0;
@@ -80,9 +88,10 @@ err check_freecharacter(swf_tag *tag_data, pdata *state) //--DONE--//
 
 err check_placeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
@@ -122,9 +131,10 @@ err check_placeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NO
 
 err check_removeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	uchar *base = tag_data->tag_data;
 
@@ -142,9 +152,10 @@ err check_removeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 
 err check_definebitsjpeg(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
@@ -166,9 +177,10 @@ err check_definebitsjpeg(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT
 
 err check_definebutton(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
@@ -183,9 +195,10 @@ err check_definebutton(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 
 err check_jpegtables(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	// To make or not to make a new struct for this if all it's data is just tag_data->tag_data
 	if(ANALYZE_DEEP)
@@ -199,9 +212,10 @@ err check_jpegtables(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT
 
 err check_setbackgroundcolor(swf_tag *tag_data, pdata *state) //--DONE--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	C_INIT_TAG(swf_tag_setbackgroundcolor);
 
@@ -214,27 +228,30 @@ err check_setbackgroundcolor(swf_tag *tag_data, pdata *state) //--DONE--//
 
 err check_definefont(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definetext(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_doaction(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	C_INIT_TAG(swf_tag_avm1action);
 
@@ -247,9 +264,10 @@ err check_doaction(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT F
 
 err check_definefontinfo(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
@@ -275,108 +293,120 @@ err check_definefontinfo(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT
 
 err check_definesound(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_startsound(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definebuttonsound(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_soundstreamhead(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_soundstreamblock(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definebitslossless(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definebitsjpeg2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_defineshape2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definebuttoncxform(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_protect(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_pathsarepostscript(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_placeobject2(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	uchar *base = tag_data->tag_data;
 	ui16 flags = 0;
@@ -385,7 +415,7 @@ err check_placeobject2(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 	{
 		if(M_BUF_BOUNDS_CHECK(base, 2, state))
 		{
-			return ESW_SHORTFILE;
+			C_RAISE_ERR(ESW_SHORTFILE);
 		}
 		flags = geti32((uchar *)base);
 	}
@@ -395,462 +425,518 @@ err check_placeobject2(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT N
 
 err check_removeobject2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_syncframe(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_freeall(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_defineshape3(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definetext2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definebutton2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definebitsjpeg3(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definebitslossless2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_defineedittext(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definevideo(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definesprite(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_namecharacter(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_productinfo(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definetextformat(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_framelabel(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_soundstreamhead2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definemorphshape(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_generateframe(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definefont2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_generatorcommand(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definecommandobject(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_characterset(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_externalfont(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_export(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_import(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_enabledebugger(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_doinitaction(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definevideostream(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_videoframe(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definefontinfo2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_debugid(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_enabledebugger2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_scriptlimits(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_settabindex(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_fileattributes(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_placeobject3(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_import2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_doabcdefine(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definefontalignzones(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_csmtextsettings(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definefont3(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_symbolclass(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_metadata(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definescalinggrid(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_doabc(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_defineshape4(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definemorphshape2(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definesceneandframedata(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definebinarydata(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definefontname(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
 err check_definebitsjpeg4(swf_tag *tag_data, pdata *state) //--TODO: NOT STARTED YET--//
 {
+	err handler_ret;
 	if(!tag_data || !state)
 	{
-		return EFN_ARGS;
+		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
 }
 
-#undef C_TAG_BOUNDS_EVAL
 #undef C_INIT_TAG
+#undef C_TAG_BOUNDS_EVAL
+
+#undef C_RAISE_ERR_INT
+#undef C_RAISE_ERR_PTR
+#undef C_RAISE_ERR
+
