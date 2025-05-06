@@ -143,7 +143,7 @@ err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag)
 	ui32 limit = state->movie_size;
 	if(tag)		// Additional test for when the tag is F_FILEHEADER, and the argument consequently passed is null, later I'll separate out movie_rect, movie_frame_rate and movie_frame_count from pdata into a swf_pseudotag_fileheader struct, and then the tag it can just be any normal tag
 	{
-		ui32 limit = tag->size - (rect_buf - tag->tag_data);
+		limit = tag->size - (rect_buf - tag->tag_data);
 	}
 	C_BOUNDS_EVAL(rect_buf, 1, state, limit, ESW_IMPROPER);
 

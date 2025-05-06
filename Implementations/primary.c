@@ -147,7 +147,7 @@ err init_parse_data(pdata *state)
 
 // Linked list ops for pec_node linked lists
 // TODO: Implement add functions for pec_list and tag_stream to add nodes at any given node
-err push_peculiarity(pdata *state, ui16 pattern, size_t offset)
+err push_peculiarity(pdata *state, ui32 pattern, size_t offset)
 {
 	err handler_ret;
 	if(!state)

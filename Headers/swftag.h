@@ -126,22 +126,20 @@
 #define FLTR_COLORMATRIX 6
 #define FLTR_GRADIENTBEVEL 7
 
+#include<stdint.h>
+#include<stddef.h>
+
 #ifndef CUSTOM_TYPES
 	#define CUSTOM_TYPES
 
 	#ifndef UI32_TYPE
-		#define UI32_TYPE unsigned long long
+		#define UI32_TYPE uint32_t
 		typedef UI32_TYPE ui32;
 	#endif
 
 	#ifndef ERR_TYPE
-		#define ERR_TYPE int
+		#define ERR_TYPE uint16_t
 		typedef ERR_TYPE err;
-	#endif
-
-	#ifndef SIZE_T
-		#define SIZE_T unsigned long
-		typedef SIZE_T size_t;
 	#endif
 
 	#ifndef UI16_TYPE
@@ -150,7 +148,7 @@
 	#endif
 
 	#ifndef UI8_TYPE
-		#define UI8_TYPE unsigned char
+		#define UI8_TYPE uint8_t
 		typedef UI8_TYPE ui8;
 	#endif
 
@@ -206,7 +204,7 @@ err init_parse_data(pdata *state);
 err_ptr append_list(pdata *state, dnode *node, size_t data_sz);
 err remove_list(pdata *state, dnode *node);
 
-err push_peculiarity(pdata *state, unsigned int pattern, size_t offset);
+err push_peculiarity(pdata *state, ui32 pattern, size_t offset);
 err pop_peculiarity(pdata *state);
 err remove_peculiarity(pdata *state, dnode *node);
 
