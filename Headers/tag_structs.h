@@ -251,7 +251,7 @@
 		uchar signature[8];
 		uchar *u_movie;	// Uncompressed movie data
 
-		ui32 read_movie_size;
+		ui32 reported_movie_size;
 
 		ui8 avm1;
 		ui8 avm2;

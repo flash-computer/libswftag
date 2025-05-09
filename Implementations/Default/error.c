@@ -52,9 +52,14 @@ memory_allocfailure_err_msg
 all_clear_msg
 */
 #define UNKNOWN_PECULIAR_EXIT_MSG "Verification successful with unknown but present caveats"
-#define peculiar_exit_messages {"This is not an error. You should never see this", UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG}
+#define peculiar_exit_messages {"This is not an error. You should never see this", "Peculiarity Filtered", UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG, UNKNOWN_PECULIAR_EXIT_MSG}
 
 const static char error_messages[16][16][100] = {peculiar_exit_messages, undefined_categories_messages, memory_error_messages, undefined_categories_messages, file_error_messages, undefined_categories_messages, prog_error_messages, undefined_categories_messages, swf_error_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages};
+
+#define unknown_peculiarity_msg "This peculiarity has not been defined yet. If you encounter this, something is wrong."
+#define peculiar_string_messages {"Padding in a bitfield isn't 0", "Tag is larger than it should be", "Mythical tag with no standard definition encountered", "Tag encountered in swf newer than the reported swf version", "Actual file size smaller than reported in header", "Undefined tag encountered", "Swf ends without a properly placed T_END tag"}
+
+const static char peculiar_messages[7][100] = peculiar_string_messages;
 
 /*----------------------------------------------------------Implementations----------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
@@ -71,8 +76,18 @@ err error_handler(err code, pdata *state)
 	exit(code);
 }
 
-void callback_peculiarity(pdata *state, dnode *node)
+err callback_peculiarity(pdata *state, dnode *node)
 {
-	fprintf(stdout, "Peculiarity encountered: %u", ((peculiar *)(node->data))->pattern);
-	return;
+	ui32 pattern = ((peculiar *)(node->data))->pattern;
+	fprintf(stdout, "Peculiarity encountered: %ju", (uintmax_t)pattern);
+	if(pattern >= 0x10 && pattern <= 0x16)
+	{
+		fprintf(stdout, FM_BOLD "%s" FM_RESET "\n", peculiar_messages[pattern-0x10]);
+	}
+	else
+	{
+		fprintf(stderr, COL_RD FM_INVR "\a" unknown_peculiarity_msg "\n");
+		return WAF_PEC_FILTERED;
+	}
+	return 0;
 }

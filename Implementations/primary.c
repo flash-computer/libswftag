@@ -128,7 +128,7 @@ err init_parse_data(pdata *state)
 	}
 	state->version = 0;
 	state->movie_size = 0;
-	state->read_movie_size = 0;
+	state->reported_movie_size = 0;
 	state->avm1 = 0;
 	state->avm2 = 0;
 	state->movie_rect.field_size = 0;
@@ -169,9 +169,7 @@ err push_peculiarity(pdata *state, ui32 pattern, size_t offset)
 		state->pec_list = check_val.pointer;
 	}
 	state->pec_list_end = check_val.pointer;
-	callback_peculiarity(state, state->pec_list_end);
-
-	return 0;
+	return callback_peculiarity(state, state->pec_list_end);
 }
 
 err pop_peculiarity(pdata *state)

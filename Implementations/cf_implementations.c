@@ -82,8 +82,7 @@ err check_freecharacter(swf_tag *tag_data, pdata *state) //--DONE--//
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	push_peculiarity(state, PEC_MYTHICAL_TAG, tag_data->tag_data - state->u_movie);
-	return 0;
+	return push_peculiarity(state, PEC_MYTHICAL_TAG, tag_data->tag_data - state->u_movie);
 }
 
 err check_placeobject(swf_tag *tag_data, pdata *state) //--TODO: STARTED, BUT NOT FINISHED--//

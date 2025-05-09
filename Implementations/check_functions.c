@@ -160,7 +160,7 @@ err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag)
 
 	if(get_bitfield_padding(rect_buf, offset))
 	{
-		return (err_int){offset, push_peculiarity(state, PEC_RECTPADDING, (tag)? (tag->tag_data - state->u_movie) : 0)};
+		return (err_int){offset, push_peculiarity(state, PEC_BITFIELD_PADDING, (tag)? (tag->tag_data - state->u_movie) : 0)};
 	}
 	return (err_int){offset, 0};
 }
@@ -222,7 +222,7 @@ err_int swf_matrix_parse(MATRIX *mat, pdata *state, uchar *mat_buf, swf_tag *tag
 
 	if(get_bitfield_padding(mat_buf, offset))
 	{
-		return (err_int){offset, push_peculiarity(state, PEC_RECTPADDING, 0)};
+		return (err_int){offset, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
 	}
 
 	return (err_int){offset, 0};
@@ -292,7 +292,7 @@ err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *co
 
 	if(get_bitfield_padding(colt_buf, offset))
 	{
-		return (err_int){offset, push_peculiarity(state, PEC_RECTPADDING, 0)};
+		return (err_int){offset, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
 	}
 
 	return (err_int){offset, 0};
@@ -352,7 +352,6 @@ err file_header_verification(pdata *state)
 // Checks tag stream
 err check_tag_stream(pdata *state)
 {
-	err handler_ret;
 	state->tag_stream = NULL;
 	state->tag_stream_end = NULL;
 	err ret_err = file_header_verification(state);
@@ -391,11 +390,15 @@ err check_tag_stream(pdata *state)
 			return tag_ret.ret;
 		}
 		buffer = last_tag->tag_data + last_tag->size;
-		if((uchar *)buffer >= (uchar *)(state->u_movie + state->movie_size))
+		if((uchar *)buffer >= (uchar *)(state->u_movie + state->movie_size))	// This is well defined I think. And since movie_size is literally the size read from the file into the buffer, this should never point to an invalid object either
 		{
 			if(last_tag->tag != T_END || state->scope_stack)
 			{
-				C_RAISE_ERR(ESW_IMPROPER);
+				err ret = push_peculiarity(state, PEC_ENDLESS, state->movie_size);	// TODO: Consider making a macro to check callback_peculiarity's return value and stuff.
+				if(ER_ERROR(ret))
+				{
+					return ret;
+				}
 			}
 			return 0;
 		}
@@ -418,8 +421,8 @@ err check_file_validity(FILE *swf, pdata *state)
 		C_RAISE_ERR(ESW_SIGNATURE);
 	}
 	state->version = signature[3];
-	state->movie_size = geti32((uchar *)signature + 4) - 8;	// We will be using these proxies for calculations because int size may differ from 32 bits
-	if(signed_comparei32(state->movie_size, 0) <= 0)
+	state->reported_movie_size = geti32((uchar *)signature + 4) - 8;	// We will be using these proxies for calculations because int size may differ from 32 bits
+	if(signed_comparei32(state->reported_movie_size, 0) <= 0)
 	{
 		C_RAISE_ERR(ESW_SIGNATURE);
 	}

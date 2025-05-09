@@ -182,12 +182,13 @@
 // I know there's an awful lot of stuff like this in this library but I'm still finalizing the overarching design
 // Should not stop the straightforward work needed to get the basic verification running
 
-#define PEC_RECTPADDING 0x10	// Rect Padding isn't all 0s
+#define PEC_BITFIELD_PADDING 0x10	// Bitfield Padding isn't all 0s
 #define PEC_TAG_EXTRA 0x11	// Size of tag exceeds what it needs
 #define PEC_MYTHICAL_TAG 0x12	// Tags not defined by the standard. No proper implementation available for these and thus these tags only raise a peculiarity and pass the checks
 #define PEC_TIME_TRAVEL 0x13	// Tag used in a version where it wasn't introduced yet
-#define PEC_FILESIZE_SMALL 0x14	// File size smaller than advertized
+#define PEC_FILESIZE_SMALL 0x14	// File size smaller than reported
 #define PEC_INVAL_TAG 0x15	// Invalid tag encountered
+#define PEC_ENDLESS 0x16 // File does not terminate with a T_END tag
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
