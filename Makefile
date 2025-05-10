@@ -36,7 +36,7 @@ all: ../libswftag-build/lib/optional/def_error.o ../libswftag-build/lib/libswfta
 	mkdir -p $@
 
 
-../libswftag-build/include/libswftag: $(header_files) ../libswftag-build/include
+../libswftag-build/include/libswftag: $(header_files)
 	mkdir -p $@
 	cp $^ '$@'
 ../libswftag-build/include: ../libswftag-build
