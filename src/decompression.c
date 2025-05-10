@@ -1,4 +1,4 @@
-#include"../Headers/decompression.h"
+#include<libswftag/decompression.h>
 
 #include<stdlib.h>
 
