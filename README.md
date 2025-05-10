@@ -17,7 +17,7 @@ Things to do and fix:
 
 - Find the official upper bound on swf versions. Adobe has not released spec for any swfs after 19, but there doesn't seem to be significant deviation in the tag stream. The current higher bound is 43 but that's arbitary based on the reported version from one of the swfs I have.
 
-- Thorough testing (It's testable on uncompressed swfs now! Use [swfcheck](https://github.com/flash-computers/swfcheck) for the testing. And use [swfpack](https://github.com/arkq/swfpack) for the decompression until the decompression algorithms are implemented.)
+- Thorough testing (It's testable on uncompressed swfs now! Use [swfcheck](https://github.com/flash-computer/swfcheck) for the testing. And use [swfpack](https://github.com/arkq/swfpack) for the decompression until the decompression algorithms are implemented.)
 
 Links/Resources:
 
