@@ -199,7 +199,12 @@ ui8 tag_valid(int tag_code);
 const char *tag_name(int tag_code);
 ui8 tag_long_exclusive(int tag_code);
 ui8 tag_version(int tag_code);
-ui8 tag_version_compare(int tag_code, pdata *state);
+ui8 tag_version_compare(pdata *state, int tag_code);
+
+ui8 id_tag_exists(pdata *state, ui16 id);
+err_ptr id_get_tag(pdata *state, ui16 id);
+err id_wipe_list(pdata *state);
+err id_register(pdata *state, ui16 id, swf_tag *tag);
 
 err init_parse_data(pdata *state);
 

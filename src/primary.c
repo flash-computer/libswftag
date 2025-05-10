@@ -8,9 +8,9 @@
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
 // Considering just making a global variable to handle temp error values on these macros but that seems contrived
-#define C_RAISE_ERR(error) {err handler_ret; ER_RAISE_ERROR_ERR(handler_ret, error, state);}
-#define C_RAISE_ERR_PTR(pointer, error) {err handler_ret; ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, error, state);}
-#define C_RAISE_ERR_INT(integer, error) {err handler_ret; ER_RAISE_ERROR_ERR_INT(handler_ret, integer, error, state);}
+#define C_RAISE_ERR(error) {err handler_ret; ER_RAISE_ERROR_ERR(handler_ret, state, error);}
+#define C_RAISE_ERR_PTR(pointer, error) {err handler_ret; ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, state, error);}
+#define C_RAISE_ERR_INT(integer, error) {err handler_ret; ER_RAISE_ERROR_ERR_INT(handler_ret, integer, state, error);}
 
 struct tag_information
 {
@@ -53,11 +53,84 @@ ui8 tag_version(int tag_code)
 	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagVersion(tag_code) : 0;
 }
 
-ui8 tag_version_compare(int tag_code, pdata *state)	// TODO: update with a concrete number for T_VER_MAX //
+ui8 tag_version_compare(pdata *state, int tag_code)	// TODO: update with a concrete number for T_VER_MAX //
 {
 	ui8 swf_ver = state->version;
 	ui8 ver = tag_version(tag_code);
 	return (ver <= swf_ver);
+}
+
+ui8 id_tag_exists(pdata *state, ui16 id)
+{
+	if(!state || !id)
+	{
+		return 0;
+	}
+	swf_tag **list = state->id_list[(id>>8)&0xFF];
+	if(!list)
+	{
+		return 0;
+	}
+	if(!list[id & 0xFF])
+	{
+		return 0;
+	}
+	return 1;
+}
+
+err_ptr id_get_tag(pdata *state, ui16 id)
+{
+	if(!id_tag_exists(state, id))
+	{
+		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
+	}
+	swf_tag **list = state->id_list[(id>>8)&0xFF];
+	return (err_ptr){list[id & 0xFF], 0};
+}
+
+err id_wipe_list(pdata *state)
+{
+	if(!state)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+	for(ui16 i=0; i<0x100; i++)
+	{
+		S_FREE(state->id_list[i]);
+		state->id_list[i] = NULL;
+	}
+	return 0;
+}
+
+err id_register(pdata *state, ui16 id, swf_tag *tag)
+{
+	if(!state || !tag || !id)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+	swf_tag **list;
+	if(state->id_list[(id>>8)&0xFF])
+	{
+		list = state->id_list[(id>>8)&0xFF];
+		if(*((state->id_list[(id>>8)&0xFF]) + (id & 0xFF)))
+		{
+			return error_handler(state, ESW_ID_CONFLICT);	// C_RAISE_ERR(ESW_ID_CONFLICT); return 0;
+		}
+	}
+	else
+	{
+		state->id_list[(id>>8)&0xFF] = list = (swf_tag **)malloc(sizeof(swf_tag **) * 0x100);
+		if(!list)
+		{
+			C_RAISE_ERR(EMM_ALLOC);
+		}
+		for(ui16 i=0; i<0x100; i++)
+		{
+			list[i] = NULL;
+		}
+	}
+	list[id & 0xFF] = tag;
+	return 0;
 }
 
 err_ptr append_list(pdata *state, dnode *node, size_t data_sz)
@@ -130,6 +203,12 @@ err init_parse_data(pdata *state)
 	state->tag_stream = NULL;
 	state->tag_stream_end = NULL;
 	state->scope_stack = NULL;
+	state->n_tags = 0;
+
+	for(ui16 i=0; i<0x100; i++)
+	{
+		state->id_list[i] = NULL;
+	}
 	return 0;
 }
 

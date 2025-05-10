@@ -236,6 +236,8 @@
 		uchar *tag_data;
 		ui16 tag_and_size;
 
+		ui16 tag_id;
+
 		void *tag_struct;
 		dnode *parent_node;
 	};
@@ -269,6 +271,10 @@
 		dnode *tag_stream_end;
 
 		dnode *scope_stack;
+
+		ui32 n_tags;	// Number of tags
+
+		swf_tag **id_list[256]; // 2D array of 1<<16 swf_tag pointers, Each 256 pointer subarray is dynamically allocated.
 	};
 	typedef struct parse_data pdata;
 
@@ -279,7 +285,6 @@
 
 	struct swf_tag_placeobject
 	{
-		ui16 id;
 		ui16 obj_depth;
 
 		MATRIX matrix;
@@ -289,15 +294,12 @@
 
 	struct swf_tag_removeobject
 	{
-		ui16 id;
 		ui16 obj_depth;
 	};
 
 	struct swf_tag_definebitsx
 	{
 		ui8 family_version;
-
-		ui16 id;
 		ui32 alpha_offset;
 		ui16 deblocking_filter_parameter;
 
@@ -318,8 +320,6 @@
 		// hover : 0x10
 		// up : 0x40
 		ui8 button_state;
-
-		ui16 id;
 		ui16 layer;
 		MATRIX matrix;
 
@@ -345,7 +345,6 @@
 /*
 	struct swf_tag_definefont
 	{
-		ui16 id;
 		ui16 glyphs_count;
 
 		ui16 glyph_offsets*
@@ -357,7 +356,6 @@
 /*
 	struct swf_tag_definetext
 	{
-		ui16 id;
 		RECT rect;
 		MATRIX mat;
 		ui8 glyph_bits;
@@ -377,7 +375,7 @@
 	{
 		ui8 family_version;
 
-		ui16 id;	// Refers to the define font id. Map the define font tag with the matching id before the font info tag in the current stream to. If there are more than one tags with the same id, that's an error.
+		ui16 define_font_id;	// Refers to the define font id. Map the define font tag with the matching id before the font info tag in the current stream to. If there are more than one tags with the same id, that's an error.
 		ui8 name_length;
 		uchar *name;
 
@@ -401,7 +399,6 @@
 
 	struct swf_tag_definesound
 	{
-		ui16 id;
 		ui8 format;
 		ui8 rate_power;	// Determines the exponent of 2 to multiply with 5512.5Hz
 

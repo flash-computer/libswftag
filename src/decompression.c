@@ -8,7 +8,7 @@ To implement:
 	Rolling/Normal DEFLATE compression/decompression
 */
 
-#define C_RAISE_ERR(error) ER_RAISE_ERROR_ERR(handler_ret, error, state)
+#define C_RAISE_ERR(error) ER_RAISE_ERROR_ERR(handler_ret, state, error)
 
 err movie_uncomp(FILE *swf, pdata *state)
 {
