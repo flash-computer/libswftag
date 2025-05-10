@@ -8,9 +8,9 @@
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
 // Considering just making a global variable to handle temp error values on these macros but that seems contrived
-#define C_RAISE_ERR(error) ER_RAISE_ERROR_ERR(handler_ret, error, state)
-#define C_RAISE_ERR_PTR(pointer, error) ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, error, state)
-#define C_RAISE_ERR_INT(integer, error) ER_RAISE_ERROR_ERR_INT(handler_ret, integer, error, state)
+#define C_RAISE_ERR(error) {err handler_ret; ER_RAISE_ERROR_ERR(handler_ret, error, state);}
+#define C_RAISE_ERR_PTR(pointer, error) {err handler_ret; ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, error, state);}
+#define C_RAISE_ERR_INT(integer, error) {err handler_ret; ER_RAISE_ERROR_ERR_INT(handler_ret, integer, error, state);}
 
 struct tag_information
 {
@@ -53,25 +53,15 @@ ui8 tag_version(int tag_code)
 	return (tag_code <= TAG_IDX_MAX && tag_code >= TAG_IDX_MIN) ? T_TagVersion(tag_code) : 0;
 }
 
-err_int tag_version_compare(int tag_code, pdata *state)	// TODO: update with a concrete number for T_VER_MAX //
+ui8 tag_version_compare(int tag_code, pdata *state)	// TODO: update with a concrete number for T_VER_MAX //
 {
-	err handler_ret;
 	ui8 swf_ver = state->version;
 	ui8 ver = tag_version(tag_code);
-	if(!ver)
-	{
-		C_RAISE_ERR_INT(0, EFN_ARGS);
-	}
-	if(swf_ver < T_VER_MIN || swf_ver > T_VER_MAX)
-	{
-		C_RAISE_ERR_INT(0, EFN_ARGS);
-	}
-	return (err_int){ver <= swf_ver, 0};
+	return (ver <= swf_ver);
 }
 
 err_ptr append_list(pdata *state, dnode *node, size_t data_sz)
 {
-	err handler_ret;
 	dnode *new_node = malloc(sizeof(dnode) + data_sz);
 	if(!new_node)
 	{
@@ -98,7 +88,6 @@ err_ptr append_list(pdata *state, dnode *node, size_t data_sz)
 
 err remove_list(pdata *state, dnode *node)
 {
-	err handler_ret;
 	if(!node)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -121,7 +110,6 @@ err remove_list(pdata *state, dnode *node)
 
 err init_parse_data(pdata *state)
 {
-	err handler_ret;
 	if(!state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -149,7 +137,6 @@ err init_parse_data(pdata *state)
 // TODO: Implement add functions for pec_list and tag_stream to add nodes at any given node
 err push_peculiarity(pdata *state, ui32 pattern, size_t offset)
 {
-	err handler_ret;
 	if(!state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -174,7 +161,6 @@ err push_peculiarity(pdata *state, ui32 pattern, size_t offset)
 
 err pop_peculiarity(pdata *state)
 {
-	err handler_ret;
 	if(!state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -194,7 +180,6 @@ err pop_peculiarity(pdata *state)
 
 err remove_peculiarity(pdata *state, dnode *node)
 {
-	err handler_ret;
 	if(!state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -217,7 +202,6 @@ err remove_peculiarity(pdata *state, dnode *node)
 // Linked list ops for swf_tag linked lists
 err push_tag(pdata *state, swf_tag *new_tag)
 {
-	err handler_ret;
 	if(!state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -248,7 +232,6 @@ err push_tag(pdata *state, swf_tag *new_tag)
 
 err pop_tag(pdata *state)
 {
-	err handler_ret;
 	if(!state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -268,7 +251,6 @@ err pop_tag(pdata *state)
 
 err remove_tag(pdata *state, dnode *node)
 {
-	err handler_ret;
 	if(!state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -290,7 +272,6 @@ err remove_tag(pdata *state, dnode *node)
 
 err push_scope(pdata *state, dnode *tag)
 {
-	err handler_ret;
 	if(!state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -314,7 +295,6 @@ err push_scope(pdata *state, dnode *tag)
 
 err pop_scope(pdata *state)
 {
-	err handler_ret;
 	if(!state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
@@ -337,8 +317,6 @@ err pop_scope(pdata *state)
 
 err_ptr alloc_push_freelist(pdata *state, size_t size, dnode *node)
 {
-
-	err handler_ret;
 	if(!node)
 	{
 		C_RAISE_ERR_PTR(NULL, EFN_ARGS);

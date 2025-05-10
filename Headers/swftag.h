@@ -163,7 +163,7 @@
 #define S_FREE(ptr)	if(ptr)free(ptr);ptr=NULL;
 
 #define T_VER_MIN 1
-#define T_VER_MAX 43	// One swf I have claims to have version 43. I don't know what the actual the max version is. TODO
+#define T_VER_MAX 43	// One swf I have claims to have this version. I don't know what the actual the max version is (Pokemon Tower Defense claims 50, so I need some documentation to resolve this asap). TODO
 
 /*--------------------------------------------------------------Structs--------------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
@@ -189,6 +189,7 @@
 #define PEC_FILESIZE_SMALL 0x14	// File size smaller than reported
 #define PEC_INVAL_TAG 0x15	// Invalid tag encountered
 #define PEC_ENDLESS 0x16 // File does not terminate with a T_END tag
+#define PEC_ANOMALOUS_VERSION 0x17 // Anomalous swf version
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
@@ -198,7 +199,7 @@ ui8 tag_valid(int tag_code);
 const char *tag_name(int tag_code);
 ui8 tag_long_exclusive(int tag_code);
 ui8 tag_version(int tag_code);
-err_int tag_version_compare(int tag_code, pdata *state);
+ui8 tag_version_compare(int tag_code, pdata *state);
 
 err init_parse_data(pdata *state);
 

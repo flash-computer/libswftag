@@ -8,9 +8,9 @@
 #include<stdlib.h>
 
 // Considering just making a global variable to handle temp error values on these macros but that seems contrived
-#define C_RAISE_ERR(error) ER_RAISE_ERROR_ERR(handler_ret, error, state)
-#define C_RAISE_ERR_PTR(pointer, error) ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, error, state)
-#define C_RAISE_ERR_INT(integer, error) ER_RAISE_ERROR_ERR_INT(handler_ret, integer, error, state)
+#define C_RAISE_ERR(error) {err handler_ret; ER_RAISE_ERROR_ERR(handler_ret, error, state);}
+#define C_RAISE_ERR_PTR(pointer, error) {err handler_ret; ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, error, state);}
+#define C_RAISE_ERR_INT(integer, error) {err handler_ret; ER_RAISE_ERROR_ERR_INT(handler_ret, integer, error, state);}
 
 /*------------------------------------------------------------Static Data------------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
@@ -24,7 +24,6 @@ static err (*tag_check[])(swf_tag *, pdata *state) = {&check_end, &check_showfra
 
 err_ptr get_tag(uchar *buffer, pdata *state)
 {
-	err handler_ret;
 	if(M_BUF_BOUNDS_CHECK(buffer, 2, state))
 	{
 		C_RAISE_ERR_PTR(NULL, ESW_SHORTFILE);
@@ -55,7 +54,6 @@ err_ptr get_tag(uchar *buffer, pdata *state)
 // The struct that the pointer returns hasn't been made yet but it would be diagnostic struct outlining exactly what is wrong in case of an error.
 err_ptr check_tag(swf_tag *tag, pdata *state)
 {
-	err handler_ret;
 	if(!tag || !state)
 	{
 		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
@@ -63,7 +61,7 @@ err_ptr check_tag(swf_tag *tag, pdata *state)
 	ui8 real_tag = tag_valid(tag->tag);
 	if(!real_tag)
 	{
-		handler_ret = push_peculiarity(state, PEC_INVAL_TAG, tag->tag_data - state->u_movie);	// You can terminate at invalid tags in the callback here if you so wish
+		err handler_ret = push_peculiarity(state, PEC_INVAL_TAG, tag->tag_data - state->u_movie);	// You can terminate at invalid tags in the callback here if you so wish
 		if(ER_ERROR(handler_ret))
 		{
 			return (err_ptr){NULL, handler_ret};
@@ -71,14 +69,9 @@ err_ptr check_tag(swf_tag *tag, pdata *state)
 	}
 	else
 	{
-		err_int ret = tag_version_compare(tag->tag, state);
-		if(ER_ERROR(ret.ret))
+		if(!tag_version_compare(tag->tag, state))
 		{
-			return (err_ptr){NULL, ret.ret};
-		}
-		if(!ret.integer)
-		{
-			handler_ret = push_peculiarity(state, PEC_TIME_TRAVEL, tag->tag_data - state->u_movie);
+			err handler_ret = push_peculiarity(state, PEC_TIME_TRAVEL, tag->tag_data - state->u_movie);
 			if(ER_ERROR(handler_ret))
 			{
 				return (err_ptr){NULL, handler_ret};
@@ -99,7 +92,6 @@ err_ptr check_tag(swf_tag *tag, pdata *state)
 
 err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data, pdata *state)
 {
-	err handler_ret;
 	if(!tag_valid(tag) && tag != F_FILEHEADER)
 	{
 		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
@@ -135,7 +127,6 @@ err_ptr spawn_tag(int tag, ui32 size, uchar *tag_data, pdata *state)
 
 err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag)
 {
-	err handler_ret;
 	if(!state || !rect || !rect_buf)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
@@ -167,7 +158,6 @@ err_int swf_rect_parse(RECT *rect, pdata *state, uchar *rect_buf, swf_tag *tag)
 
 err_int swf_matrix_parse(MATRIX *mat, pdata *state, uchar *mat_buf, swf_tag *tag)
 {
-	err handler_ret;
 	if(!tag || !state || !mat || !mat_buf)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
@@ -230,7 +220,6 @@ err_int swf_matrix_parse(MATRIX *mat, pdata *state, uchar *mat_buf, swf_tag *tag
 
 err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *colt_buf, swf_tag *tag)
 {
-	err handler_ret;
 	if(!tag || !state || !colt || !colt_buf)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
@@ -306,7 +295,6 @@ err_int swf_color_transform_parse(COLOR_TRANSFORM *colt, pdata *state, uchar *co
 
 err file_header_verification(pdata *state)
 {
-	err handler_ret;
 	err_int ret = swf_rect_parse(&(state->movie_rect), state, (uchar *)state->u_movie, NULL);
 	if(ER_ERROR(ret.ret))
 	{
@@ -408,7 +396,6 @@ err check_tag_stream(pdata *state)
 // The FILE cursor should point at the beginning of the swf signature/file
 err check_file_validity(FILE *swf, pdata *state)
 {
-	err handler_ret;
 	uchar *signature = state->signature;
 
 	if(fread(signature, 1, 8, swf) < 8)
@@ -421,6 +408,15 @@ err check_file_validity(FILE *swf, pdata *state)
 		C_RAISE_ERR(ESW_SIGNATURE);
 	}
 	state->version = signature[3];
+
+	if(state->version < T_VER_MIN || state->version > T_VER_MAX)
+	{
+		err handler_ret = push_peculiarity(state, PEC_ANOMALOUS_VERSION, 0);
+		if(ER_ERROR(handler_ret))
+		{
+			return handler_ret;
+		}
+	}
 	state->reported_movie_size = geti32((uchar *)signature + 4) - 8;	// We will be using these proxies for calculations because int size may differ from 32 bits
 	if(signed_comparei32(state->reported_movie_size, 0) <= 0)
 	{

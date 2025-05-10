@@ -45,23 +45,6 @@
 #define ER_RAISE_ERROR_ERR_PTR(variable, pointer, error, pdata) (variable)=error_handler(error, pdata);if(ER_ERROR(variable))return((err_ptr){pointer, variable});
 #define ER_RAISE_ERROR_ERR_INT(variable, integer, error, pdata) (variable)=error_handler(error, pdata);if(ER_ERROR(variable))return((err_int){integer, variable});
 
-/*------------------------------------------------------------Stack trace------------------------------------------------------------*/
-/*-----------------------------------------------------------------------------------------------------------------------------------*/
-/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
-
-#ifndef CALLSTACK_TRACE_FEATURES
-	#define CALLSTACK_TRACE_FEATURES
-
-	struct callstack_element
-	{
-		char *fn_name;
-		void *fn_pointer;
-		// TODO: Add something to convey the arguments, maybe?
-	};
-	typedef struct callstack_element cstack;
-
-#endif
-
 /*-----------------------------------------------------------Error Handler-----------------------------------------------------------*/
 /*----------------------------------------------------------Defined by user----------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/

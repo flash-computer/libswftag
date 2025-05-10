@@ -57,9 +57,9 @@ all_clear_msg
 const static char error_messages[16][16][100] = {peculiar_exit_messages, undefined_categories_messages, memory_error_messages, undefined_categories_messages, file_error_messages, undefined_categories_messages, prog_error_messages, undefined_categories_messages, swf_error_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages};
 
 #define unknown_peculiarity_msg "This peculiarity has not been defined yet. If you encounter this, something is wrong."
-#define peculiar_string_messages {"Padding in a bitfield isn't 0", "Tag is larger than it should be", "Mythical tag with no standard definition encountered", "Tag encountered in swf newer than the reported swf version", "Actual file size smaller than reported in header", "Undefined tag encountered", "Swf ends without a properly placed T_END tag"}
+#define peculiar_string_messages {"Padding in a bitfield isn't 0", "Tag is larger than it should be", "Mythical tag with no standard definition encountered", "Tag encountered in swf newer than the reported swf version", "Actual file size smaller than reported in header", "Undefined tag encountered", "Swf ends without a properly placed T_END tag", "Anomalous swf version"}
 
-const static char peculiar_messages[7][100] = peculiar_string_messages;
+const static char peculiar_messages[8][100] = peculiar_string_messages;
 
 /*----------------------------------------------------------Implementations----------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
@@ -80,7 +80,7 @@ err callback_peculiarity(pdata *state, dnode *node)
 {
 	ui32 pattern = ((peculiar *)(node->data))->pattern;
 	fprintf(stdout, "Peculiarity encountered: %ju", (uintmax_t)pattern);
-	if(pattern >= 0x10 && pattern <= 0x16)
+	if(pattern >= 0x10 && pattern <= 0x17)
 	{
 		fprintf(stdout, FM_BOLD "%s" FM_RESET "\n", peculiar_messages[pattern-0x10]);
 	}
