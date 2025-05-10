@@ -40,7 +40,7 @@ err_ptr get_tag(pdata *state, uchar *buffer)
 	tag->tag_id = 0;	// Not all tag types have an id, infact few do, but it's still better to have that here in my humble opinion
 	if(tag->size == 63 || tag_long_exclusive(tag->tag))
 	{
-		if(M_BUF_BOUNDS_CHECK(buffer, 4, state))
+		if(M_BUF_BOUNDS_CHECK(buffer, 6, state))
 		{
 			C_RAISE_ERR_PTR(tag, ESW_SHORTFILE);
 		}
@@ -87,6 +87,10 @@ err_ptr check_tag(pdata *state, swf_tag *tag)
 		{
 			return (err_ptr){NULL, ret_check};
 		}
+	}
+	if(M_BUF_BOUNDS_CHECK(tag->tag_data, tag->size, state))
+	{
+		C_RAISE_ERR_PTR(tag, ESW_SHORTFILE);
 	}
 	return (err_ptr){NULL, 0};
 }
@@ -379,6 +383,10 @@ err check_tag_stream(pdata *state)
 		{
 			// Diagnostics go here
 			return tag_ret.ret;
+		}
+		if(M_BUF_BOUNDS_CHECK(last_tag->tag_data, last_tag->size, state))
+		{
+			return ESW_SHORTFILE;
 		}
 		buffer = last_tag->tag_data + last_tag->size;
 		(state->n_tags)++;
