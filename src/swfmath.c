@@ -1,5 +1,5 @@
-#include"../Headers/swftag.h"
-#include"../Headers/swfmath.h"
+#include<libswftag/swftag.h>
+#include<libswftag/swfmath.h>
 
 ui32 geti32(uchar *inp)
 {
