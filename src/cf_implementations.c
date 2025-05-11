@@ -956,6 +956,26 @@ err check_definebitsjpeg4(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED
 	return 0;
 }
 
+err check_definefont4(pdata *state, swf_tag *tag_data)  //--TODO: NOT STARTED YET--//
+{
+	err handler_ret;
+	if(!tag_data || !state)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+	return 0;
+}
+
+err check_enabletelemetry(pdata *state, swf_tag *tag_data)  //--TODO: NOT STARTED YET--//
+{
+	err handler_ret;
+	if(!tag_data || !state)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+	return 0;
+}
+
 #undef C_INIT_TAG
 #undef C_TAG_BOUNDS_EVAL
 

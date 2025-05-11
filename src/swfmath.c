@@ -3,17 +3,17 @@
 
 ui32 geti32(uchar *inp)
 {
-	ui32 ret_val = (ui8)inp[0];
-	ret_val += ((ui32)inp[1])<<8;
-	ret_val += ((ui32)inp[2])<<16;
-	ret_val += ((ui32)inp[3])<<24;
+	ui32 ret_val = M_SANITIZE_BYTE((ui8)inp[0]);
+	ret_val += M_SANITIZE_BYTE((ui32)inp[1])<<8;
+	ret_val += M_SANITIZE_BYTE((ui32)inp[2])<<16;
+	ret_val += M_SANITIZE_BYTE((ui32)inp[3])<<24;
 	return ret_val;
 }
 
 ui16 geti16(uchar *inp)
 {
 	ui16 ret_val = inp[0];
-	ret_val += ((ui16)inp[1])<<8;	// It's a little endian world in a byte-ordering agnostic language
+	ret_val += M_SANITIZE_BYTE((ui16)inp[1])<<8;	// It's a little endian world in a byte-ordering agnostic language
 	return ret_val;
 }
 

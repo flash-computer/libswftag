@@ -36,6 +36,18 @@ err movie_uncomp(FILE *swf, pdata *state)
 			C_RAISE_ERR(EFL_READ);
 		}
 	}
+	else
+	{
+		int read_more = fgetc(swf);
+		if(read_more != EOF)
+		{
+			handler_ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
+			if(ER_ERROR(handler_ret))
+			{
+				return handler_ret;
+			}
+		}
+	}
 	return 0;
 }
 
@@ -48,6 +60,7 @@ err movie_deflate(FILE *swf, pdata *state)
 		return EMM_ALLOC;
 
 	// TODO: sizes cast to unsigned int here
+	// fc: That seems unavoidable as long as the dependence is on zlib being used.
 	z_stream zs = {
 		.next_out = uncomp,
 		.avail_out = state->reported_movie_size,
@@ -89,6 +102,7 @@ end:
 
 	inflateEnd(&zs);
 
+	// TODO: Making this movie_size ptrdiff calculation c99 spec compliant after the M_SAFE_PTRDIIF macro is added to swfmath.h
 	state->movie_size = (zs.next_out - uncomp);
 	state->u_movie = uncomp;
 
@@ -105,7 +119,9 @@ end:
 		{
 			// just a corrupt file
 			// flash could still play this
-			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
+			// fc: Detecting corrupt files is sort of the point though? A decompression error is as fatal as they come imho, because nothing can be ascertained about what little was decoded. But, I guess I'd wait for more results from testing before making a decision on this.
+			// TODO
+			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);	// In all honesty, the offsets throughout the libraray for PEC_FILESIZE_SMALL are not consistent, so I should fix that before changing this, but since the peculiarity interface isn't really mature yet, I think this is fine for now.
 			if(ER_ERROR(handler_ret))
 			{
 				return handler_ret;
@@ -145,7 +161,7 @@ end:
 		if (!data_remaining)
 		{
 			// unexpected end of file
-			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
+			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
 			if(ER_ERROR(handler_ret))
 			{
 				return handler_ret;
@@ -154,7 +170,7 @@ end:
 		else if (data_remaining && !zs.avail_out)
 		{
 			// header size too short
-			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
+			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);	// TODO: May need it's own peculiarity
 			if(ER_ERROR(handler_ret))
 			{
 				return handler_ret;
@@ -168,7 +184,7 @@ end:
 		if (data_remaining)
 		{
 			// junk data after compressed body
-			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
+			handler_ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 			if(ER_ERROR(handler_ret))
 			{
 				return handler_ret;

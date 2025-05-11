@@ -18,6 +18,12 @@
 
 #define M_UNSIGNED_COMPARE(a, b) ((a == b) ? 0 : (a > b) ? 1 : -1)
 
+#if CHAR_BIT > 8
+	#define M_SANITIZE_BYTE(byte) (byte) & ((ui8)0xFF)
+#else
+	#define M_SANITIZE_BYTE(byte) (byte)
+#endif
+
 ui32 geti32(uchar *inp);
 ui16 geti16(uchar *inp);
 uf16_16 getuf16_16(uchar *inp);

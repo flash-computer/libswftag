@@ -111,8 +111,10 @@
 #define	T_DEFINEBINARYDATA 87
 #define	T_DEFINEFONTNAME 88
 #define	T_DEFINEBITSJPEG4 90
+#define T_DEFINEFONT4 91 // "Soul Brother.swf" and "Flight.swf" seem to be the only swfs to contain this tag and so my automatic scraping did not include this
+#define T_ENABLETELEMETRY 93 // Yes
 
-#define TAG_IDX_MAX T_DEFINEBITSJPEG4
+#define TAG_IDX_MAX T_ENABLETELEMETRY
 #define TAG_IDX_MIN T_END
 
 #define	F_FILEHEADER -1 // Not a real tag, just for ease of reference so we can treat it as one, borrowing from m2osw.com's convention (no idea if they were the ones who originated it though)
@@ -182,6 +184,8 @@
 // I know there's an awful lot of stuff like this in this library but I'm still finalizing the overarching design
 // Should not stop the straightforward work needed to get the basic verification running
 
+#define PEC_MIN 0x10
+
 #define PEC_BITFIELD_PADDING 0x10	// Bitfield Padding isn't all 0s
 #define PEC_TAG_EXTRA 0x11	// Size of tag exceeds what it needs
 #define PEC_MYTHICAL_TAG 0x12	// Tags not defined by the standard. No proper implementation available for these and thus these tags only raise a peculiarity and pass the checks
@@ -190,6 +194,9 @@
 #define PEC_INVAL_TAG 0x15	// Invalid tag encountered
 #define PEC_ENDLESS 0x16 // File does not terminate with a T_END tag
 #define PEC_ANOMALOUS_VERSION 0x17 // Anomalous swf version
+#define PEC_DATA_AFTER_MOVIE 0x18 // File does not end after the movie. This is a relatively serious peculiarity and should likely be filtered for any service using swfs. However, the sane approach should be to just truncate the file upto the movie and discard the rest.
+
+#define PEC_MAX 0x18
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/

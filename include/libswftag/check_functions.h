@@ -85,6 +85,8 @@ err check_definesceneandframedata(pdata *state, swf_tag *tag_data);
 err check_definebinarydata(pdata *state, swf_tag *tag_data);
 err check_definefontname(pdata *state, swf_tag *tag_data);
 err check_definebitsjpeg4(pdata *state, swf_tag *tag_data);
+err check_definefont4(pdata *state, swf_tag *tag_data);
+err check_enabletelemetry(pdata *state, swf_tag *tag_data);
 
 #define check_stopsound(data, state) check_startsound(data, state)
 
