@@ -227,9 +227,9 @@ err check_setbackgroundcolor(pdata *state, swf_tag *tag_data) //--DONE--//
 	C_INIT_TAG(swf_tag_setbackgroundcolor);
 
 	C_TAG_BOUNDS_EVAL(tag_data->tag_data, 3);
-	tag_struct->color.red = tag_data->tag_data[0];
-	tag_struct->color.green = tag_data->tag_data[1];
-	tag_struct->color.blue = tag_data->tag_data[2];
+	tag_struct->color.red = M_SANITIZE_BYTE(tag_data->tag_data[0]);
+	tag_struct->color.green = M_SANITIZE_BYTE(tag_data->tag_data[1]);
+	tag_struct->color.blue = M_SANITIZE_BYTE(tag_data->tag_data[2]);
 	return 0;
 }
 
@@ -243,13 +243,50 @@ err check_definefont(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET-
 	return 0;
 }
 
-err check_definetext(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_definetext(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISHED--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
+	/*
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+
+	C_INIT_TAG(swf_tag_definetextx);
+	C_TAG_BOUNDS_EVAL(base, 2);
+	tag_struct->family_version = 1;
+
+	tag_struct->id = geti16((uchar *)base);
+	offset += 2;
+	err_int ret = swf_rect_parse(state, &(tag_struct->rect), base + offset, tag_data);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+	offset += M_ALIGN(ret.integer, 3)>>3;
+
+	ret = swf_matrix_parse(state, &(tag_struct->mat), base + offset, tag_data);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+	offset += M_ALIGN(ret.integer, 3)>>3;
+
+	C_TAG_BOUNDS_EVAL(base + offset, 2);
+
+	tag_struct->glyph_bits = M_SANITIZE_BYTE(base[offset]);
+	tag_struct->advance_bits = M_SANITIZE_BYTE(base[offset+1]);
+	offset += 2;
+
+	ret = swf_text_record_parse(state, &(tag_struct->record), base + offset, tag_data);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+	offset += M_ALIGN(ret.integer, 3)>>3;
+	*/
 	return 0;
 }
 
@@ -261,6 +298,7 @@ err check_doaction(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT F
 		C_RAISE_ERR(EFN_ARGS);
 	}
 	C_INIT_TAG(swf_tag_avm1action);
+	tag_struct->initaction = 0;
 
 	if(ANALYZE_DEEP)
 	{
@@ -300,11 +338,11 @@ err check_definefontinfo(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT
 
 	*/
 
-	tag_struct->name_length = base[2];
+	tag_struct->name_length = M_SANITIZE_BYTE(base[2]);
 
-	C_TAG_BOUNDS_EVAL(base+offset, base[2]);
+	C_TAG_BOUNDS_EVAL(base+offset, M_SANITIZE_BYTE(base[2]));
 	tag_struct->name = base+offset;
-	offset += base[2];
+	offset += M_SANITIZE_BYTE(base[2]);
 
 	tag_struct->bitfields = base[offset];
 

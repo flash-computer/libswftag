@@ -9,9 +9,9 @@ Things to do and fix:
     - Optional mp3/jpg/png/wav/svg/flv verification through third party programs. Anti feature in some ways but it's useful for personal use.
     - Optional recursive swf verification in DefineBinaryData tags.
 
-- Implement the decompression functions, implement use of liblzma and zlib in the meanwhile. (Working on it too, but it's lower in priority)
+- Implement the decompression functions, implement use of liblzma ~~and zlib~~(added in commit 37af56b9d8f36820450c4080a08890636f9a2b32) in the meanwhile. (Working on it too, but it's lower in priority)
 
-- add some conditional macros for platforms to replace the slow and bulky standard conformant solutions with faster and more natural solutions (like signed compare and loads etc.) for the platforms that support those.
+- Add some conditional macros for platforms to replace the slow and bulky standard conformant solutions with faster and more natural solutions (like signed compare and loads etc.) for the platforms that support those.
 
 - Gather documentation on when tags were added into the format.
 

@@ -1,4 +1,5 @@
 #include<libswftag/decompression.h>
+#include<libswftag/swfmath.h>
 
 #include<stdlib.h>
 
@@ -60,7 +61,7 @@ err movie_deflate(FILE *swf, pdata *state)
 		return EMM_ALLOC;
 
 	// Never overflows because reported_movie_size never exceeds 0xFFFFFFFF, and the minimum value of UINTMAX_MAX conferred by N1256 is (1<<64)-1
-	uintmax_t max_compressed_size = (state->reported_movie_size) +  (5 * (uintmax_t)M_CEIL_DIV(state->reported_movie_size, 65535));
+	uintmax_t max_compressed_size = (state->reported_movie_size) +  (5 * (uintmax_t)M_CEILDIV(state->reported_movie_size, 65535));
 	// Naive Estimation. Assuming optimal compression for each block (AKA in the worst case, the entire file will be stored in Raw blocks, which confer a 5 byte overhead over a maximum of 65535 raw bytes)
 	// To my knowledge, nothing forbids unoptimal DEFLATE blocks, which can cause the size to baloon up. To calculate it would need more work, it would be the size of the most unoptimal Huffman tree(then it isn't really a huffman tree but the standard still allows it so our hands are ties) + A noisy assortment of the heaviest words from the tree. If it even is a finite bound, let alone that fits inside a 64 bit word for uintmax_t, I'll put off finding out for later.
 	// TODO: As a heuristic in the self implemented inflate, we will reject any file that contains a non raw block that is larger than the output block.
@@ -74,10 +75,9 @@ err movie_deflate(FILE *swf, pdata *state)
 	// TODO: Study the RFC 1951 standard more thoroughly to resolve these meaningfully. If no resolution exists, assume that a compliant compressor must store a raw block if other methods fail. Better safe than sorry.
 
 	// TODO: sizes cast to unsigned int here
-	// fc: That seems unavoidable as long as the dependence is on zlib being used.
 	z_stream zs = {
 		.next_out = uncomp,
-		.avail_out = state->reported_movie_size,	// Consider changing it to the max_compressed_size assumption?
+		.avail_out = state->reported_movie_size,
 	};
 
 	if (inflateInit(&zs) != Z_OK)

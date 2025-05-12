@@ -80,6 +80,10 @@ err_ptr check_tag(pdata *state, swf_tag *tag)
 		}
 	}
 	// Check function calls and the rest of the stuff will go here
+	if(M_BUF_BOUNDS_CHECK(tag->tag_data, tag->size, state))
+	{
+		C_RAISE_ERR_PTR(tag, ESW_SHORTFILE);
+	}
 	if(real_tag)
 	{
 		err ret_check = tag_check[tag->tag](state, tag);
@@ -87,10 +91,6 @@ err_ptr check_tag(pdata *state, swf_tag *tag)
 		{
 			return (err_ptr){NULL, ret_check};
 		}
-	}
-	if(M_BUF_BOUNDS_CHECK(tag->tag_data, tag->size, state))
-	{
-		C_RAISE_ERR_PTR(tag, ESW_SHORTFILE);
 	}
 	return (err_ptr){NULL, 0};
 }
@@ -127,48 +127,47 @@ err_ptr spawn_tag(pdata *state, int tag, ui32 size, uchar *tag_data)
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-// TODO: Make these context aware by making them return err_int to output the size of the structure in bits and pass the swf_tag in arguments instead of limit because some substructures have additional properties based on that
 // Only for integrity checks in substructure parsing. ESW_SHORTFILE if errror
 #define C_BOUNDS_EVAL(tagbuffer, offset, pdata, limit, insuf_err) if(M_BUF_BOUNDS_CHECK(tagbuffer, offset, pdata)){C_RAISE_ERR_INT(0, ESW_SHORTFILE);}if(limit < offset){C_RAISE_ERR_INT(0, insuf_err);}
 
-err_int swf_rect_parse(pdata *state, RECT *rect, uchar *rect_buf, swf_tag *tag)
+err_int swf_rect_parse(pdata *state, RECT *rect, uchar *buf, swf_tag *tag)
 {
-	if(!state || !rect || !rect_buf)
+	if(!state || !rect || !buf)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
 	ui32 limit = state->movie_size;
 	if(tag)		// Additional test for when the tag is F_FILEHEADER, and the argument consequently passed is null, later I'll separate out movie_rect, movie_frame_rate and movie_frame_count from pdata into a swf_pseudotag_fileheader struct, and then the tag it can just be any normal tag
 	{
-		limit = tag->size - (rect_buf - tag->tag_data);
+		limit = tag->size - (buf - tag->tag_data);
 	}
-	C_BOUNDS_EVAL(rect_buf, 1, state, limit, ESW_IMPROPER);
+	C_BOUNDS_EVAL(buf, 1, state, limit, ESW_IMPROPER);
 
-	rect->field_size = (rect_buf[0] & 0xF8)>>3;	// Since the byte is right aligned, works for higher values of CHAR_BIT just fine
+	rect->field_size = (M_SANITIZE_BYTE(buf[0]) & 0xF8)>>3;	// Since the byte is right aligned, works for higher values of CHAR_BIT just fine
 
 	C_BOUNDS_EVAL(state->u_movie, M_ALIGN((5+(rect->field_size * 4)), 3)>>3, state, limit, ESW_IMPROPER);
 
 	ui8 offset = 5;
 	for(ui8 field = 0; field < 4; field++)
 	{
-		rect->fields[field] = get_signed_bitfield((uchar *)rect_buf, 5 + (rect->field_size * field), rect->field_size);
+		rect->fields[field] = get_signed_bitfield((uchar *)buf, 5 + (rect->field_size * field), rect->field_size);
 		offset += rect->field_size;
 	}
 
-	if(get_bitfield_padding(rect_buf, offset))
+	if(get_bitfield_padding(buf, offset))
 	{
 		return (err_int){offset, push_peculiarity(state, PEC_BITFIELD_PADDING, (tag)? (tag->tag_data - state->u_movie) : 0)};
 	}
 	return (err_int){offset, 0};
 }
 
-err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *mat_buf, swf_tag *tag)
+err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *buf, swf_tag *tag)
 {
-	if(!tag || !state || !mat || !mat_buf)
+	if(!tag || !state || !mat || !buf)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
-	ui32 limit = tag->size - (mat_buf - tag->tag_data);
+	ui32 limit = tag->size - (buf - tag->tag_data);
 
 	// Default values
 	mat->scale_x = (uf16_16){1,0};
@@ -177,46 +176,46 @@ err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *mat_buf, swf_tag *tag
 	mat->rotate_skew0 = (uf16_16){0,0};
 	mat->rotate_skew1 = (uf16_16){0,0};
 
-	C_BOUNDS_EVAL(mat_buf, 1, state, limit, ESW_IMPROPER);
+	C_BOUNDS_EVAL(buf, 1, state, limit, ESW_IMPROPER);
 
 	mat->bitfields = 0;
 	ui32 offset = 1;
-	if(mat_buf[0] & 0x80)
+	if(M_SANITIZE_BYTE(buf[0]) & 0x80)
 	{
 		mat->bitfields |= 0x1;
-		mat->scale_bits = get_bitfield(mat_buf, 1, 5);
+		mat->scale_bits = get_bitfield(buf, 1, 5);
 
-		C_BOUNDS_EVAL(mat_buf, M_ALIGN(6+mat->scale_bits * 2, 3)>>3, state, limit, ESW_IMPROPER);
+		C_BOUNDS_EVAL(buf, M_ALIGN(6+mat->scale_bits * 2, 3)>>3, state, limit, ESW_IMPROPER);
 
-		mat->scale_x = get_signed_bitfield_fixed(mat_buf, 6, mat->scale_bits);
-		mat->scale_y = get_signed_bitfield_fixed(mat_buf, 6 + mat->scale_bits, mat->scale_bits);
+		mat->scale_x = get_signed_bitfield_fixed(buf, 6, mat->scale_bits);
+		mat->scale_y = get_signed_bitfield_fixed(buf, 6 + mat->scale_bits, mat->scale_bits);
 		offset += 5 + (mat->scale_bits * 2);
 	}
-	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 1, 3)>>3, state, limit, ESW_IMPROPER);
+	C_BOUNDS_EVAL(buf, M_ALIGN(offset + 1, 3)>>3, state, limit, ESW_IMPROPER);
 
-	if(get_bitfield(mat_buf, offset, 1))
+	if(get_bitfield(buf, offset, 1))
 	{
 		mat->bitfields |= 0x10;
 
-		C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 6, 3)>>3, state, limit, ESW_IMPROPER);
-		mat->rotate_bits = get_bitfield(mat_buf, offset + 1, 5);
+		C_BOUNDS_EVAL(buf, M_ALIGN(offset + 6, 3)>>3, state, limit, ESW_IMPROPER);
+		mat->rotate_bits = get_bitfield(buf, offset + 1, 5);
 
-		C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 6 + (mat->rotate_bits * 2), 3)>>3, state, limit, ESW_IMPROPER);
-		mat->rotate_skew0 = get_signed_bitfield_fixed(mat_buf, 6 + offset, mat->rotate_bits);
-		mat->rotate_skew1 = get_signed_bitfield_fixed(mat_buf, 6 + offset + mat->rotate_bits, mat->rotate_bits);
+		C_BOUNDS_EVAL(buf, M_ALIGN(offset + 6 + (mat->rotate_bits * 2), 3)>>3, state, limit, ESW_IMPROPER);
+		mat->rotate_skew0 = get_signed_bitfield_fixed(buf, 6 + offset, mat->rotate_bits);
+		mat->rotate_skew1 = get_signed_bitfield_fixed(buf, 6 + offset + mat->rotate_bits, mat->rotate_bits);
 		offset += 5 + (mat->rotate_bits * 2);
 	}
 	offset++;
 
-	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 5, 3)>>3, state, limit, ESW_IMPROPER);
-	mat->translate_bits = get_bitfield(mat_buf, offset + 1, 5);
+	C_BOUNDS_EVAL(buf, M_ALIGN(offset + 5, 3)>>3, state, limit, ESW_IMPROPER);
+	mat->translate_bits = get_bitfield(buf, offset + 1, 5);
 
-	C_BOUNDS_EVAL(mat_buf, M_ALIGN(offset + 5 + (mat->translate_bits * 2), 3)>>3, state, limit, ESW_IMPROPER);
-	mat->translate_x = get_signed_bitfield_fixed(mat_buf, 5 + offset, mat->translate_bits);
-	mat->translate_y = get_signed_bitfield_fixed(mat_buf, 5 + offset + mat->translate_bits, mat->translate_bits);
+	C_BOUNDS_EVAL(buf, M_ALIGN(offset + 5 + (mat->translate_bits * 2), 3)>>3, state, limit, ESW_IMPROPER);
+	mat->translate_x = get_signed_bitfield_fixed(buf, 5 + offset, mat->translate_bits);
+	mat->translate_y = get_signed_bitfield_fixed(buf, 5 + offset + mat->translate_bits, mat->translate_bits);
 	offset += 5 + (mat->translate_bits * 2);
 
-	if(get_bitfield_padding(mat_buf, offset))
+	if(get_bitfield_padding(buf, offset))
 	{
 		return (err_int){offset, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
 	}
@@ -224,14 +223,14 @@ err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *mat_buf, swf_tag *tag
 	return (err_int){offset, 0};
 }
 
-err_int swf_color_transform_parse(pdata *state, COLOR_TRANSFORM *colt, uchar *colt_buf, swf_tag *tag)
+err_int swf_color_transform_parse(pdata *state, COLOR_TRANSFORM *colt, uchar *buf, swf_tag *tag)
 {
-	if(!tag || !state || !colt || !colt_buf)
+	if(!tag || !state || !colt || !buf)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
 
-	ui32 limit = tag->size - (colt_buf - tag->tag_data);
+	ui32 limit = tag->size - (buf - tag->tag_data);
 
 	// Default Values
 	colt->red_mult = (uf16_16){1,0};
@@ -244,54 +243,169 @@ err_int swf_color_transform_parse(pdata *state, COLOR_TRANSFORM *colt, uchar *co
 	colt->blue_add = (uf16_16){0,0};
 	colt->alpha_add = (uf16_16){0,0};
 
-	C_BOUNDS_EVAL(colt_buf, 1, state, limit, 0);
-	colt->bitfields = get_bitfield(colt_buf, 0, 1);
-	colt->bitfields |= get_bitfield(colt_buf, 1, 1)<<4;
-	colt->color_bits = get_bitfield(colt_buf, 2, 4);
+	C_BOUNDS_EVAL(buf, 1, state, limit, 0);
+	colt->bitfields = get_bitfield(buf, 0, 1);
+	colt->bitfields |= get_bitfield(buf, 1, 1)<<4;
+	colt->color_bits = get_bitfield(buf, 2, 4);
 
 	ui32 offset = 6;
 
 	if(colt->bitfields & 0x10)
 	{
-		C_BOUNDS_EVAL(colt_buf, M_ALIGN(offset + colt->color_bits * 3, 3)>>3, state, limit, 0);
+		C_BOUNDS_EVAL(buf, M_ALIGN(offset + colt->color_bits * 3, 3)>>3, state, limit, 0);
 
-		colt->red_mult = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
-		colt->green_mult = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits, colt->color_bits);
-		colt->blue_mult = get_signed_bitfield_fixed(colt_buf, offset + (colt->color_bits<<1), colt->color_bits);
+		colt->red_mult = get_signed_bitfield_fixed(buf, offset, colt->color_bits);
+		colt->green_mult = get_signed_bitfield_fixed(buf, offset + colt->color_bits, colt->color_bits);
+		colt->blue_mult = get_signed_bitfield_fixed(buf, offset + (colt->color_bits<<1), colt->color_bits);
 		offset += colt->color_bits * 3;
 		if(tag->tag == T_PLACEOBJECT2)
 		{
-			C_BOUNDS_EVAL(colt_buf, M_ALIGN(offset + colt->color_bits, 3)>>3, state, limit, 0);
+			C_BOUNDS_EVAL(buf, M_ALIGN(offset + colt->color_bits, 3)>>3, state, limit, 0);
 
-			colt->alpha_mult = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
+			colt->alpha_mult = get_signed_bitfield_fixed(buf, offset, colt->color_bits);
 			offset += colt->color_bits;
 		}
 	}
 
 	if(colt->bitfields & 0x10)
 	{
-		C_BOUNDS_EVAL(colt_buf, M_ALIGN(offset + colt->color_bits * 3, 3)>>3, state, limit, 0);
+		C_BOUNDS_EVAL(buf, M_ALIGN(offset + colt->color_bits * 3, 3)>>3, state, limit, 0);
 
-		colt->red_add = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
-		colt->green_add = get_signed_bitfield_fixed(colt_buf, offset + colt->color_bits, colt->color_bits);
-		colt->blue_add = get_signed_bitfield_fixed(colt_buf, offset + (colt->color_bits<<1), colt->color_bits);
+		colt->red_add = get_signed_bitfield_fixed(buf, offset, colt->color_bits);
+		colt->green_add = get_signed_bitfield_fixed(buf, offset + colt->color_bits, colt->color_bits);
+		colt->blue_add = get_signed_bitfield_fixed(buf, offset + (colt->color_bits<<1), colt->color_bits);
 		offset += colt->color_bits * 3;
 		if(tag->tag == T_PLACEOBJECT2)
 		{
-			C_BOUNDS_EVAL(colt_buf, M_ALIGN(offset + colt->color_bits, 3)>>3, state, limit, 0);
+			C_BOUNDS_EVAL(buf, M_ALIGN(offset + colt->color_bits, 3)>>3, state, limit, 0);
 
-			colt->alpha_add = get_signed_bitfield_fixed(colt_buf, offset, colt->color_bits);
+			colt->alpha_add = get_signed_bitfield_fixed(buf, offset, colt->color_bits);
 			offset += colt->color_bits;
 		}
 	}
 
-	if(get_bitfield_padding(colt_buf, offset))
+	if(get_bitfield_padding(buf, offset))
 	{
 		return (err_int){offset, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
 	}
 
 	return (err_int){offset, 0};
 }
+
+err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_tag *tag)
+{
+	if(!tag || !state || !trec || !buf)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	if(!(tag->tag_struct))
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	struct swf_tag_definetextx *text = (struct swf_tag_definetextx *)(tag->tag_struct);
+
+	ui32 limit = tag->size - (buf - tag->tag_data);
+	ui32 offset = 0;
+	ui8 diff = text->family_version;
+	if(!diff || diff > 2)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	diff = (diff==2);
+
+	C_BOUNDS_EVAL(buf, 1, state, limit, ESW_IMPROPER);
+	ui8 firstbyte = M_SANITIZE_BYTE(buf[0]);
+	if((firstbyte & 0xF0) != 0x80)
+	{
+		err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, 0);
+		if(ER_ERROR(ret))
+		{
+			return (err_int){0, ret};
+		}
+	}
+	firstbyte &= 0xF;
+	offset += 1;
+	trec->bitfields = firstbyte & 0xF;
+
+	if(firstbyte & 0x8)
+	{
+		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
+		trec->define_font_id = geti16(buf + offset);
+		offset += 2;
+		// TODO: Find and connect the tag relevant to the id.
+	}
+	if(firstbyte & 0x4)
+	{
+		C_BOUNDS_EVAL(buf + offset, 3 + diff, state, limit, ESW_IMPROPER);
+		trec->color.red = M_SANITIZE_BYTE(buf[offset]);
+		trec->color.green = M_SANITIZE_BYTE(buf[offset+1]);
+		trec->color.blue = M_SANITIZE_BYTE(buf[offset+2]);
+		trec->color.alpha = M_SANITIZE_BYTE((buf[offset+3] * diff) + ((diff ^ 1) * 0xFF));
+		offset += 3 + diff;
+	}
+	if(firstbyte & 0x2)
+	{
+		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
+		trec->move_x = geti16(buf + offset);
+		offset += 2;
+	}
+	if(firstbyte & 0x1)
+	{
+		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
+		trec->move_y = geti16(buf + offset);
+		offset += 2;
+	}
+	if(firstbyte & 0x8)
+	{
+		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
+		trec->font_height = geti16(buf + offset);
+		offset += 2;
+	}
+
+	C_BOUNDS_EVAL(buf + offset, 1, state, limit, ESW_IMPROPER);
+	trec->glyph_count = M_SANITIZE_BYTE(buf[offset]);	// Need to look into it more
+	if(!diff)
+	{
+		if(trec->glyph_count & 0x80)
+		{
+			trec->glyph_count &= 0x7F;
+		}
+		else
+		{
+			err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, 0);
+			if(ER_ERROR(ret))
+			{
+				return (err_int){0, ret};
+			}
+		}
+	}
+	offset++;
+
+	ui8 glyph_width = text->glyph_bits;
+	ui8 advance_width = text->advance_bits;
+
+	C_BOUNDS_EVAL(buf + offset, M_ALIGN((trec->glyph_count) * (glyph_width + advance_width), 3)>>3, state, limit, ESW_IMPROPER);
+	err_ptr ret_ptr = alloc_push_freelist(state, sizeof(GLYPHENTRY) * trec->glyph_count, tag->parent_node);
+	if(ER_ERROR(ret_ptr.ret))
+	{
+		return (err_int){0, ret_ptr.ret};
+	}
+	trec->entries = (GLYPHENTRY *)(ret_ptr.pointer);
+
+	for(ui32 i=0; i<(trec->glyph_count); i++)
+	{
+		trec->entries[i].glyph_index = get_bitfield(buf+offset, i * (glyph_width + advance_width), glyph_width);
+		trec->entries[i].glyph_advance = get_bitfield(buf+offset, (i * (glyph_width + advance_width)) + glyph_width, advance_width);
+	}
+	offset += M_ALIGN((trec->glyph_count) * (glyph_width + advance_width), 3)>>3;
+
+	if(get_bitfield_padding(buf, offset))
+	{
+		return (err_int){offset, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
+	}
+	return (err_int){offset, 0};
+}
+
 
 #undef C_BOUNDS_EVAL
 
@@ -415,11 +529,11 @@ err check_file_validity(pdata *state, FILE *swf)
 		C_RAISE_ERR(EFL_READ);
 	}
 
-	if(signature[1] != 'W' || signature [2] != 'S')		// Not using short because we abide by standards to the best of our abilities here
+	if(M_SANITIZE_BYTE(signature[1]) != 'W' || M_SANITIZE_BYTE(signature[2]) != 'S')		// Not using short because we abide by standards to the best of our abilities here
 	{
 		C_RAISE_ERR(ESW_SIGNATURE);
 	}
-	state->version = signature[3];
+	state->version = M_SANITIZE_BYTE(signature[3]);
 
 	if(state->version < T_VER_MIN || state->version > T_VER_MAX)
 	{
@@ -435,7 +549,7 @@ err check_file_validity(pdata *state, FILE *swf)
 		C_RAISE_ERR(ESW_SIGNATURE);
 	}
 
-	state->compression = signature[0];
+	state->compression = M_SANITIZE_BYTE(signature[0]);
 	err ret_err = 0;
 
 	switch(state->compression)

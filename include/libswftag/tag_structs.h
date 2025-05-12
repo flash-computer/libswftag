@@ -49,6 +49,37 @@
 		ui32 lo;
 	};
 	typedef struct fixedvar fvar;
+
+
+	// Compound return types
+	struct return_pointer_with_error
+	{
+		void *pointer;
+		err ret;
+	};
+	typedef struct return_pointer_with_error err_ptr;
+
+	struct return_integer_with_error
+	{
+		ui32 integer;
+		err ret;
+	};
+	typedef struct return_integer_with_error err_int;
+
+	struct swf_tag
+	{
+		int tag;
+		ui32 size;
+		uchar *tag_data;
+		ui16 tag_and_size;
+
+		ui16 tag_id;
+
+		void *tag_struct;
+		dnode *parent_node;
+	};
+	typedef struct swf_tag swf_tag;
+
 #endif
 
 /*----------------------------------------------------------Library Structs----------------------------------------------------------*/
@@ -61,6 +92,9 @@
 
 /*------------------------ TAG SUBSTRUCTURES ------------------------*/
 /*---------------------------------|---------------------------------*/
+
+// Disclaimer: This is the library's representation of the structures for convinience to be clear. This is not a accurate view into how the swfs are actually stored
+// TODO : add defs for the bitfields somewhere
 
 	struct swf_rect
 	{
@@ -134,7 +168,39 @@
 		ui8 blue;
 		ui8 alpha;
 	};
-	typedef struct swf_rgb RGBA;
+	typedef struct swf_rgba RGBA;
+
+	struct swf_glyphentry
+	{
+		ui32 glyph_index;	// The spec is unclear whether or not glyph_bits can be >32, or anything really. But since the swf movie length (including signature) is capped at 4GiB, the glyph_index cannot possible exceed 32 bit width, and if it does, that's an error.
+		ui32 glyph_advance;	// A similar logic cannot be applied here, but since nowhere else are twips stored in a field of width >32, this is valid I think. Again, exceeding this, would be an error.
+	};
+	typedef struct swf_glyphentry GLYPHENTRY;
+
+	struct swf_text_record
+	{
+		// has_font : 0x8
+		// has_color : 0x4
+		// has_move_x : 0x2
+		// has_move_y : 0x1
+		ui8 bitfields;
+
+		ui16 define_font_id;
+		swf_tag *font_tag;
+
+		// If family_version == 1, then Alpha = 255.
+		RGBA color;
+
+		ui16 move_x;
+		ui16 move_y;
+		ui16 font_height;
+
+		// 7 bit value for ver < 7
+		// 8 bit Otherwise (??)
+		ui8 glyph_count;
+		GLYPHENTRY *entries;
+	};
+	typedef struct swf_text_record TEXT_RECORD;
 
 	struct swf_filter_blur
 	{
@@ -163,7 +229,6 @@
 		ui8 bitfields;
 	};
 	typedef struct swf_filter_convolution CONVOLUTION_FILTER;
-
 
 	struct swf_filter_glow
 	{
@@ -213,35 +278,6 @@
 		size_t offset;
 	};
 	typedef struct parse_peculiarity peculiar;
-
-	// Compound return types
-	struct return_pointer_with_error
-	{
-		void *pointer;
-		err ret;
-	};
-	typedef struct return_pointer_with_error err_ptr;
-
-	struct return_integer_with_error
-	{
-		ui32 integer;
-		err ret;
-	};
-	typedef struct return_integer_with_error err_int;
-
-	struct swf_tag
-	{
-		int tag;
-		ui32 size;
-		uchar *tag_data;
-		ui16 tag_and_size;
-
-		ui16 tag_id;
-
-		void *tag_struct;
-		dnode *parent_node;
-	};
-	typedef struct swf_tag swf_tag;
 
 	// FileHeader pseudo-tag and DefineSprite are the only tags for which a new swf_scope opens. END tags close the scope
 
@@ -315,10 +351,10 @@
 		// filter_list : 0x10
 		ui8 bitfields;
 
-		// square_test : 0x1
+		// square_test : 0x8
 		// down : 0x4
-		// hover : 0x10
-		// up : 0x40
+		// hover : 0x2
+		// up : 0x1
 		ui8 button_state;
 		ui16 layer;
 		MATRIX matrix;
@@ -353,16 +389,17 @@
 	};
 */
 
-/*
-	struct swf_tag_definetext
+	struct swf_tag_definetextx
 	{
+		ui8 family_version;
+		ui16 id;
+
 		RECT rect;
 		MATRIX mat;
 		ui8 glyph_bits;
 		ui8 advance_bits;
-		//////////TEXT_RECORD record;
+		TEXT_RECORD record;
 	};
-*/
 
 	struct swf_tag_avm1action
 	{

@@ -24,7 +24,7 @@ uf16_16 getuf16_16(uchar *inp)
 
 uf8_8 getuf8_8(uchar *inp)
 {
-	return (uf8_8){(ui8)inp[1], (ui8)inp[0]};
+	return (uf8_8){M_SANITIZE_BYTE((ui8)inp[1]), M_SANITIZE_BYTE((ui8)inp[0])};
 }
 
 int signed_comparei32(ui32 comparand_a, ui32 comparand_b)

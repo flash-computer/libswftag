@@ -195,8 +195,10 @@
 #define PEC_ENDLESS 0x16 // File does not terminate with a T_END tag
 #define PEC_ANOMALOUS_VERSION 0x17 // Anomalous swf version
 #define PEC_DATA_AFTER_MOVIE 0x18 // File does not end after the movie. This is a relatively serious peculiarity and should likely be filtered for any service using swfs. However, the sane approach should be to just truncate the file upto the movie and discard the rest.
+#define PEC_RESERVE_TAMPERED 0x19 // Some reserved bit in some structure/substructure bitfield was tampered (usually only raised for where the reserved bit is specified a state, like if the spec says it's Always 1 or 0). Not thoroughly enforced yet. TODO
+#define PEC_WIDTH_TOO_BIG 0x1A // Width too big for specified field. Gets auto truncated
 
-#define PEC_MAX 0x18
+#define PEC_MAX 0x1A
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/

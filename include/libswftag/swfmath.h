@@ -12,9 +12,29 @@
 // (-1)-diffval for negative diffval will generate a value between 0(incl.) and PTRDIFF_MAX(inclusive when the using 2's complement, exclusive for signed magnitude and 1's complement)
 // Okay, apparently SIZE_MAX is not guaranteed to be (2*PTRDIFF_MAX)+1 for c99. SIZE_MAX is guaranteed to be atleast 65535, which is the same as PTRDIFF_MAX. Which I mean, one of these is a signed type and the other is not. This is stupid. So we're expanding the overflow checks
 #define CHECK_PTRDIFF_OVERFLOW(diffval, addend) ((((ptrdiff_t)diffval) >= (ptrdiff_t)0)? ((uintmax_t)((uintmax_t)(PTRDIFF_MAX - ((ptrdiff_t)diffval))) < (uintmax_t)(addend)) : ((uintmax_t)addend < (uintmax_t)PTRDIFF_MAX) ? 0 : (((uintmax_t)addend - (uintmax_t)PTRDIFF_MAX) > (uintmax_t)((ptrdiff_t)(-1)-((ptrdiff_t)diffval))))
-#define M_BUF_BOUNDS_CHECK(buffer, offset, pdata) ((((((uchar *)buffer) - pdata->u_movie) + ((offset) & ((ui32)0xFFFFFFFF))) > (pdata->movie_size)) || ((void *)(buffer) < (void *)(pdata->u_movie)) || CHECK_PTRDIFF_OVERFLOW(((((uchar *)buffer) - pdata->u_movie) + ((offset) & ((ui32)0xFFFFFFFF))), ((offset) & ((ui32)0xFFFFFFFF))))
+
+// Behold, stupidity at it's peak
+// ONLY use on objects allocated in a multiple that fits inside 32 bits, where the pointer has been gradually differentiated from the base pointer doing a bounds check **before** any change
+// ret_var should be of the type uintmax_t
+#if PTRDIFF_MAX < 0xFFFFFFFF
+	#define M_SAFE_PTRDIIFF32(minuend, subtrahend, ptr_type, ret_var)	{ret_var = 0; ptr_type * safe_diff_ptr = ((ptr_type *)subtrahend); while(1){ptr_type * temp_diff_ptr = (safe_diff_ptr + (uintmax_t)PTRDIFF_MAX);if(temp_diff_ptr > ((ptr_type *)minuend) || temp_diff_ptr < ((ptr_type *)subtrahend)){ret_var += ((ptr_type *)minuend) - safe_diff_ptr; break};ret_var += (uintmax_t)PTRDIFF_MAX; safe_diff_ptr += (uintmax_t)PTRDIFF_MAX;}}
+	#ifndef UCHAR_PTRDIFF_FN
+		#define UCHAR_PTRDIFF_FN
+		uintmax_t uchar_bounds_check(uchar *minuend, uchar *subtrahend)
+		{
+			uintmax_t ret_val;
+			M_SAFE_PTRDIIFF32(minuend, subtrahend, uchar, ret_val);
+			return ret_val;
+		}
+	#endif
+#else
+	#define M_SAFE_PTRDIIFF32(minuend, subtrahend, ptr_type, ret_var) {ret_var=(((ptr_type *)minuend) - ((ptr_type *)subtrahend));}
+	#define uchar_bounds_check(minuend, subtrahend) (((uchar *)minuend) - ((uchar *)subtrahend))
+#endif
+
+#define M_BUF_BOUNDS_CHECK(buffer, offset, pdata) (((uchar_bounds_check(buffer, pdata->u_movie) + ((offset) & ((ui32)0xFFFFFFFF))) > ((uintmax_t)(pdata->movie_size))) || ((void *)(buffer) < (void *)(pdata->u_movie)))
 // Now to figure out a way to ensure that (((uchar *)buffer) - pdata->u_movie) is < PTRDIFF_MAX
-// Okay, there is a pretty stupid Idea I have for this but it's basically to have a loop that runs, successively adding PTRDIFF_MAX to a uintmax_t "difference" variable and an iterating pointer while it's smaller than buffer and then just adding the difference from the last pointer once it crosses it. This is naturally, dogshit and slow, but also the only standard compliant way I can think of. Obviously, since buffer - pdata->u_movie is guaranteed to be < 0xFFFFFFFF (we'll do more bounds check to ensure that in check_tag_stream), this will be enforced conditionally only when PTRDIFF_MAX < 0xFFFFFFFF through some #if macros
+
 
 #define M_UNSIGNED_COMPARE(a, b) ((a == b) ? 0 : (a > b) ? 1 : -1)
 

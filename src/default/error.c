@@ -57,9 +57,9 @@ all_clear_msg
 const static char error_messages[16][16][100] = {peculiar_exit_messages, undefined_categories_messages, memory_error_messages, undefined_categories_messages, file_error_messages, undefined_categories_messages, prog_error_messages, undefined_categories_messages, swf_error_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages, undefined_categories_messages};
 
 #define UNKNOWN_PECULIARITY_MSG "This peculiarity has not been defined yet. If you encounter this, something is wrong."
-#define PECULIAR_STRING_MESSAGES {"Padding in a bitfield isn't 0", "Tag is larger than it should be", "Mythical tag with no standard definition encountered", "Tag encountered in swf newer than the reported swf version", "Actual file size smaller than reported in header", "Undefined tag encountered", "Swf ends without a properly placed T_END tag", "Anomalous swf version", "File extends after the movie"}
+#define PECULIAR_STRING_MESSAGES {"Padding in a bitfield isn't 0", "Tag is larger than it should be", "Mythical tag with no standard definition encountered", "Tag encountered in swf newer than the reported swf version", "Actual file size smaller than reported in header", "Undefined tag encountered", "Swf ends without a properly placed T_END tag", "Anomalous swf version", "File extends after the movie", "Reserved bit tampered", "Width of a bitfield is too big"}
 
-const static char peculiar_messages[9][100] = PECULIAR_STRING_MESSAGES;
+const static char peculiar_messages[(PEC_MAX - PEC_MIN) + 1][100] = PECULIAR_STRING_MESSAGES;
 
 #define N_LOW_RISK_INVAL_TAGS 4
 
