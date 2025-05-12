@@ -20,7 +20,7 @@
 	#define M_SAFE_PTRDIIFF32(minuend, subtrahend, ptr_type, ret_var)	{ret_var = 0; ptr_type * safe_diff_ptr = ((ptr_type *)subtrahend); while(1){ptr_type * temp_diff_ptr = (safe_diff_ptr + (uintmax_t)PTRDIFF_MAX);if(temp_diff_ptr > ((ptr_type *)minuend) || temp_diff_ptr < ((ptr_type *)subtrahend)){ret_var += ((ptr_type *)minuend) - safe_diff_ptr; break};ret_var += (uintmax_t)PTRDIFF_MAX; safe_diff_ptr += (uintmax_t)PTRDIFF_MAX;}}
 	#ifndef UCHAR_PTRDIFF_FN
 		#define UCHAR_PTRDIFF_FN
-		uintmax_t uchar_bounds_check(uchar *minuend, uchar *subtrahend)
+		uintmax_t uchar_safe_ptrdiff(uchar *minuend, uchar *subtrahend)
 		{
 			uintmax_t ret_val;
 			M_SAFE_PTRDIIFF32(minuend, subtrahend, uchar, ret_val);
@@ -29,10 +29,10 @@
 	#endif
 #else
 	#define M_SAFE_PTRDIIFF32(minuend, subtrahend, ptr_type, ret_var) {ret_var=(((ptr_type *)minuend) - ((ptr_type *)subtrahend));}
-	#define uchar_bounds_check(minuend, subtrahend) (((uchar *)minuend) - ((uchar *)subtrahend))
+	#define uchar_safe_ptrdiff(minuend, subtrahend) (((uchar *)minuend) - ((uchar *)subtrahend))
 #endif
 
-#define M_BUF_BOUNDS_CHECK(buffer, offset, pdata) (((uchar_bounds_check(buffer, pdata->u_movie) + ((offset) & ((ui32)0xFFFFFFFF))) > ((uintmax_t)(pdata->movie_size))) || ((void *)(buffer) < (void *)(pdata->u_movie)))
+#define M_BUF_BOUNDS_CHECK(buffer, offset, pdata) (((uchar_safe_ptrdiff(buffer, pdata->u_movie) + ((offset) & ((ui32)0xFFFFFFFF))) > ((uintmax_t)(pdata->movie_size))) || ((void *)(buffer) < (void *)(pdata->u_movie)))
 // Now to figure out a way to ensure that (((uchar *)buffer) - pdata->u_movie) is < PTRDIFF_MAX
 
 

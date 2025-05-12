@@ -116,8 +116,8 @@ end:
 
 	inflateEnd(&zs);
 
-	// TODO: Making this movie_size ptrdiff calculation c99 spec compliant after the M_SAFE_PTRDIIF macro is added to swfmath.h
-	state->movie_size = (zs.next_out - uncomp);
+
+	state->movie_size = uchar_safe_ptrdiff(zs.next_out, uncomp);
 	state->u_movie = uncomp;
 
 	if (zret < 0)

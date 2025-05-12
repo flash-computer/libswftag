@@ -38,7 +38,7 @@ err_ptr get_tag(pdata *state, uchar *buffer)
 	tag->size = (tag->tag_and_size & 0x3F);
 	tag->tag_data = buffer + 2;
 	tag->tag_id = 0;	// Not all tag types have an id, infact few do, but it's still better to have that here in my humble opinion
-	if(tag->size == 63 || tag_long_exclusive(tag->tag))
+	if(tag->size == 63)
 	{
 		if(M_BUF_BOUNDS_CHECK(buffer, 6, state))
 		{
@@ -46,6 +46,14 @@ err_ptr get_tag(pdata *state, uchar *buffer)
 		}
 		tag->size = geti32((uchar *)buffer + 2);
 		tag->tag_data = buffer + 6;
+	}
+	else if(tag_long_exclusive(tag->tag))
+	{
+		err ret = push_peculiarity(state, PEC_UNCONVENTIONAL_SHORT_TAG, uchar_safe_ptrdiff(buffer, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return (err_ptr){NULL, ret};
+		}
 	}
 	return (err_ptr){tag, 0};
 }
