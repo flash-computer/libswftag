@@ -376,15 +376,7 @@ err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_t
 	{
 		if(trec->glyph_count & 0x80)
 		{
-			trec->glyph_count &= 0x7F;
-		}
-		else
-		{
-			err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, 0);
-			if(ER_ERROR(ret))
-			{
-				return (err_int){0, ret};
-			}
+			trec->glyph_count &= 0x7F;	// TODO: Is this correct?
 		}
 	}
 	offset++;
@@ -403,7 +395,7 @@ err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_t
 	for(ui32 i=0; i<(trec->glyph_count); i++)
 	{
 		trec->entries[i].glyph_index = get_bitfield(buf+offset, i * (glyph_width + advance_width), glyph_width);
-		trec->entries[i].glyph_advance = get_bitfield(buf+offset, (i * (glyph_width + advance_width)) + glyph_width, advance_width);
+		trec->entries[i].glyph_advance = get_signed_bitfield(buf+offset, (i * (glyph_width + advance_width)) + glyph_width, advance_width);
 	}
 	offset += M_ALIGN((trec->glyph_count) * (glyph_width + advance_width), 3)>>3;
 

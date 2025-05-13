@@ -39,9 +39,24 @@
 #define M_UNSIGNED_COMPARE(a, b) ((a == b) ? 0 : (a > b) ? 1 : -1)
 
 #if CHAR_BIT > 8
-	#define M_SANITIZE_BYTE(byte) (byte) & ((ui8)0xFF)
+	#define M_SANITIZE_BYTE(byte) ((byte) & ((ui8)0xFF))
+	#define M_SANITIZE_UI16(val) ((val) & ((ui16)0xFFFF))
+	#define M_SANITIZE_UI32(val) ((val) & ((ui32)0xFFFFFFFF))
 #else
 	#define M_SANITIZE_BYTE(byte) (byte)
+	/* Why the hell is this not allowed?
+	#if sizeof(ui16) > 2
+		#define M_SANITIZE_UI16(val) ((val) & ((ui16)0xFFFF))
+	#else
+		#define M_SANITIZE_UI16(val) (val)
+	#endif
+
+	#if sizeof(ui32) > 4
+		#define M_SANITIZE_UI32(val) ((val) & ((ui32)0xFFFFFFFF))
+	#else
+		#define M_SANITIZE_UI32(val) (val)
+	#endif
+	*/
 #endif
 
 ui32 geti32(uchar *inp);
