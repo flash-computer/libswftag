@@ -1,5 +1,5 @@
 CC = cc
-CFLAGS = -O2 -g -Iinclude -Wall -std=c99 -pedantic
+CFLAGS = -g -Iinclude -Wall -std=c99 -pedantic
 
 libswftag_objs = \
 	lib/intermediate/cf_implementations.o \
@@ -14,10 +14,10 @@ lib/libswftag.a: $(libswftag_objs)
 	ar rcs $@ $^
 
 lib/optional/error.o: src/default/error.o lib/optional
-	cp $< $@
+	mv $< $@
 
 lib/intermediate/%.o: src/%.c lib/intermediate
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(EXTRA_FLAGS) -c $< -o $@
 
 clean:
 	rm -f libswftag.a error.o $(libswftag_objs)
