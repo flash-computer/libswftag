@@ -516,6 +516,10 @@ err check_tag_stream(pdata *state)
 			}
 			return 0;
 		}
+		if(!(state->scope_stack))
+		{
+			C_RAISE_ERR(WAF_PREMATURE_END);
+		}
 	}
 }
 

@@ -35,6 +35,7 @@
 
 #define WAF_NIB_HIGH 0x00	// Misc Warnings, not outright errors but returned when a choice to terminate is taken regardless
 #define WAF_PEC_FILTERED (0x1 | WAF_NIB_HIGH)	// Peculiarity filtered. Return this from the callback_peculiarity function if you want to filter a particular peculiarity
+#define WAF_PREMATURE_END (0x2 | WAF_NIB_HIGH)	// Tag stream ends with a T_END prematurely while there's still Data within the movie_size range. This is a serious offender and one of the most likely vectors of peddling a malicious file as a swf. Mitigations include - continuing the checks by readding the fileheader pseudotag to the scope and returning an ALL_CLEAR from the error_handler, or readjusting the movie_size based on the final T_END tag and truncating the file to fit exactly that. Doing this to compressed files isn't possible within the realm of this library currently, so for now, either reimplement it outside this library (change the file signature with the updated movie_size, and recompress the new truncated data with zlib) or just terminate. The library may later provide options to recompress swfs.
 
 #define ALL_CLEAR	0x0		// All clear
 
