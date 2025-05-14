@@ -13,20 +13,22 @@ all: lib/libswftag.a lib/optional/error.o
 lib/libswftag.a: $(libswftag_objs)
 	ar rcs $@ $^
 
-lib/optional/error.o: src/default/error.o lib/optional
-	mv $< $@
+lib/intermediate/default/error.o: | lib/intermediate/default
 
-lib/intermediate/%.o: src/%.c lib/intermediate
+lib/intermediate/%.o: src/%.c | lib/intermediate
 	$(CC) $(CFLAGS) $(EXTRA_FLAGS) -c $< -o $@
 
+lib/optional/error.o: lib/intermediate/default/error.o | lib/optional
+	cp $< $@
+
 clean:
-	rm -f libswftag.a error.o $(libswftag_objs)
+	-rm -r lib
+
+lib/intermediate/default:
+	mkdir -p $@
 
 lib/intermediate:
 	mkdir -p $@
 
 lib/optional:
 	mkdir -p $@
-
-lib:
-	mkdir $@
