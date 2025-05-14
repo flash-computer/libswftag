@@ -44,6 +44,8 @@
 	#define M_SANITIZE_UI32(val) ((val) & ((ui32)0xFFFFFFFF))
 #else
 	#define M_SANITIZE_BYTE(byte) (byte)
+	#define M_SANITIZE_UI16(val) (val)
+	#define M_SANITIZE_UI32(val) (val)
 	/* Why the hell is this not allowed?
 	#if sizeof(ui16) > 2
 		#define M_SANITIZE_UI16(val) ((val) & ((ui16)0xFFFF))

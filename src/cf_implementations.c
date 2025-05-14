@@ -250,7 +250,6 @@ err check_definetext(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	/*
 	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
 
@@ -280,12 +279,16 @@ err check_definetext(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT
 	tag_struct->advance_bits = M_SANITIZE_BYTE(base[offset+1]);
 	offset += 2;
 
-	ret = swf_text_record_parse(state, &(tag_struct->record), base + offset, tag_data);
-	if(ER_ERROR(ret.ret))
+	/*
+	while(tag_data->tag_data[offset])
 	{
-		return ret.ret;
+		ret = swf_text_record_parse(state, &(tag_struct->record), base + offset, tag_data);
+		if(ER_ERROR(ret.ret))
+		{
+			return ret.ret;
+		}
+		offset += ret.integer;
 	}
-	offset += M_ALIGN(ret.integer, 3)>>3;
 	*/
 	return 0;
 }

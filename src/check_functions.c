@@ -216,12 +216,13 @@ err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *buf, swf_tag *tag)
 	offset++;
 
 	C_BOUNDS_EVAL(buf, M_ALIGN(offset + 5, 3)>>3, state, limit, ESW_IMPROPER);
-	mat->translate_bits = get_bitfield(buf, offset + 1, 5);
+	mat->translate_bits = get_bitfield(buf, offset, 5);
 
 	C_BOUNDS_EVAL(buf, M_ALIGN(offset + 5 + (mat->translate_bits * 2), 3)>>3, state, limit, ESW_IMPROPER);
 	mat->translate_x = get_signed_bitfield_fixed(buf, 5 + offset, mat->translate_bits);
 	mat->translate_y = get_signed_bitfield_fixed(buf, 5 + offset + mat->translate_bits, mat->translate_bits);
 	offset += 5 + (mat->translate_bits * 2);
+
 
 	if(get_bitfield_padding(buf, offset))
 	{
@@ -313,99 +314,110 @@ err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_t
 	struct swf_tag_definetextx *text = (struct swf_tag_definetextx *)(tag->tag_struct);
 
 	ui32 limit = tag->size - (buf - tag->tag_data);
-	ui32 offset = 0;
+	ui32 byte_offset = 0;
 	ui8 diff = text->family_version;
 	if(!diff || diff > 2)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
 	diff = (diff==2);
+	ui32 bit_offset = 0;
 
-	C_BOUNDS_EVAL(buf, 1, state, limit, ESW_IMPROPER);
-	ui8 firstbyte = M_SANITIZE_BYTE(buf[0]);
-	if((firstbyte & 0xF0) != 0x80)
+	while(1)	// TODO: instead of using a singular text record, use a dnode list of text records and allocate them within this function and tie every element to the free list of the tag's parent
 	{
-		err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, 0);
-		if(ER_ERROR(ret))
+		C_BOUNDS_EVAL(buf, M_ALIGN(bit_offset + 8, 3)>>3, state, limit, ESW_IMPROPER);
+		ui8 firstbyte = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset, 8));
+		if(!firstbyte)
 		{
-			return (err_int){0, ret};
+			break;
 		}
-	}
-	firstbyte &= 0xF;
-	offset += 1;
-	trec->bitfields = firstbyte & 0xF;
-
-	if(firstbyte & 0x8)
-	{
-		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
-		trec->define_font_id = geti16(buf + offset);
-		offset += 2;
-		// TODO: Find and connect the tag relevant to the id.
-	}
-	if(firstbyte & 0x4)
-	{
-		C_BOUNDS_EVAL(buf + offset, 3 + diff, state, limit, ESW_IMPROPER);
-		trec->color.red = M_SANITIZE_BYTE(buf[offset]);
-		trec->color.green = M_SANITIZE_BYTE(buf[offset+1]);
-		trec->color.blue = M_SANITIZE_BYTE(buf[offset+2]);
-		trec->color.alpha = M_SANITIZE_BYTE((buf[offset+3] * diff) + ((diff ^ 1) * 0xFF));
-		offset += 3 + diff;
-	}
-	if(firstbyte & 0x2)
-	{
-		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
-		trec->move_x = geti16(buf + offset);
-		offset += 2;
-	}
-	if(firstbyte & 0x1)
-	{
-		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
-		trec->move_y = geti16(buf + offset);
-		offset += 2;
-	}
-	if(firstbyte & 0x8)
-	{
-		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
-		trec->font_height = geti16(buf + offset);
-		offset += 2;
-	}
-
-	C_BOUNDS_EVAL(buf + offset, 1, state, limit, ESW_IMPROPER);
-	trec->glyph_count = M_SANITIZE_BYTE(buf[offset]);	// Need to look into it more
-	if(!diff)
-	{
-		if(trec->glyph_count & 0x80)
+		if((firstbyte & 0xF0) != 0x80)
 		{
-			trec->glyph_count &= 0x7F;	// TODO: Is this correct?
+			err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, 0);
+			if(ER_ERROR(ret))
+			{
+				return (err_int){0, ret};
+			}
 		}
+		bit_offset += 8;
+		firstbyte &= 0xF;
+		trec->bitfields = firstbyte & 0xF;
+
+		if(firstbyte & 0x8)
+		{
+			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 16, 3)>>3, state, limit, ESW_IMPROPER);
+			trec->define_font_id = M_SANITIZE_UI16(get_bitfield(buf + byte_offset, bit_offset, 16));
+			bit_offset += 16;
+			// TODO: Find and connect the tag relevant to the id.
+		}
+		if(firstbyte & 0x4)
+		{
+			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + ((3 + diff)<<3), 3)>>3, state, limit, ESW_IMPROPER);
+			trec->color.red = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset, 8));
+			trec->color.green = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset + 8, 8));
+			trec->color.blue = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset + 16, 8));
+			trec->color.alpha = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset + 24, 8) + ((diff ^ 1) * 0xFF));
+			bit_offset += (3 + diff)<<3;
+		}
+		if(firstbyte & 0x2)
+		{
+			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 16, 3)>>3, state, limit, ESW_IMPROPER);
+			trec->move_x = M_SANITIZE_UI16(get_bitfield(buf + byte_offset, bit_offset, 16));
+			bit_offset += 16;
+		}
+		if(firstbyte & 0x1)
+		{
+			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 16, 3)>>3, state, limit, ESW_IMPROPER);
+			trec->move_y = M_SANITIZE_UI16(get_bitfield(buf + byte_offset, bit_offset, 16));
+			bit_offset += 16;
+		}
+		if(firstbyte & 0x8)
+		{
+			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 16, 3)>>3, state, limit, ESW_IMPROPER);
+			trec->font_height = M_SANITIZE_UI16(get_bitfield(buf + byte_offset, bit_offset, 16));
+			bit_offset += 16;
+		}
+
+		C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 8, 3)>>3, state, limit, ESW_IMPROPER);
+		trec->glyph_count = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset, 8));	// Need to look into it more
+		if(!diff)
+		{
+			if(trec->glyph_count & 0x80)
+			{
+				trec->glyph_count &= 0x7F;	// TODO: Is this correct?
+			}
+		}
+		bit_offset += 8;
+
+		ui8 glyph_width = text->glyph_bits;
+		ui8 advance_width = text->advance_bits;
+
+		C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + ((trec->glyph_count) * (glyph_width + advance_width)), 3)>>3, state, limit, ESW_IMPROPER);
+		err_ptr ret_ptr = alloc_push_freelist(state, sizeof(GLYPHENTRY) * trec->glyph_count, tag->parent_node);
+		if(ER_ERROR(ret_ptr.ret))
+		{
+			return (err_int){0, ret_ptr.ret};
+		}
+		trec->entries = (GLYPHENTRY *)(ret_ptr.pointer);
+
+		for(ui32 i=0; i<(trec->glyph_count); i++)
+		{
+			trec->entries[i].glyph_index = get_bitfield(buf+byte_offset, bit_offset + (i * (glyph_width + advance_width)), glyph_width);
+			trec->entries[i].glyph_advance = get_signed_bitfield(buf+byte_offset, bit_offset + (i * (glyph_width + advance_width)) + glyph_width, advance_width);
+		}
+		bit_offset += (trec->glyph_count) * (glyph_width + advance_width);
+		byte_offset += M_ALIGN(bit_offset, 3)>>3;
+		bit_offset &= 0x7;
+
+		C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 8, 3)>>3, state, limit, ESW_IMPROPER);
 	}
-	offset++;
 
-	ui8 glyph_width = text->glyph_bits;
-	ui8 advance_width = text->advance_bits;
-
-	C_BOUNDS_EVAL(buf + offset, M_ALIGN((trec->glyph_count) * (glyph_width + advance_width), 3)>>3, state, limit, ESW_IMPROPER);
-	err_ptr ret_ptr = alloc_push_freelist(state, sizeof(GLYPHENTRY) * trec->glyph_count, tag->parent_node);
-	if(ER_ERROR(ret_ptr.ret))
+	if(get_bitfield_padding(buf + byte_offset, bit_offset))
 	{
-		return (err_int){0, ret_ptr.ret};
+		return (err_int){byte_offset, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
 	}
-	trec->entries = (GLYPHENTRY *)(ret_ptr.pointer);
-
-	for(ui32 i=0; i<(trec->glyph_count); i++)
-	{
-		trec->entries[i].glyph_index = get_bitfield(buf+offset, i * (glyph_width + advance_width), glyph_width);
-		trec->entries[i].glyph_advance = get_signed_bitfield(buf+offset, (i * (glyph_width + advance_width)) + glyph_width, advance_width);
-	}
-	offset += M_ALIGN((trec->glyph_count) * (glyph_width + advance_width), 3)>>3;
-
-	if(get_bitfield_padding(buf, offset))
-	{
-		return (err_int){offset, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
-	}
-	return (err_int){offset, 0};
+	return (err_int){byte_offset, 0};
 }
-
 
 #undef C_BOUNDS_EVAL
 
