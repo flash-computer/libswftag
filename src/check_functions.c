@@ -147,7 +147,7 @@ err_int swf_rect_parse(pdata *state, RECT *rect, uchar *buf, swf_tag *tag)
 	ui32 limit = state->movie_size;
 	if(tag)		// Additional test for when the tag is F_FILEHEADER, and the argument consequently passed is null, later I'll separate out movie_rect, movie_frame_rate and movie_frame_count from pdata into a swf_pseudotag_fileheader struct, and then the tag it can just be any normal tag
 	{
-		limit = tag->size - (buf - tag->tag_data);
+		limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
 	}
 	C_BOUNDS_EVAL(buf, 1, state, limit, ESW_IMPROPER);
 
@@ -175,7 +175,11 @@ err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *buf, swf_tag *tag)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
-	ui32 limit = tag->size - (buf - tag->tag_data);
+	if(tag->size < uchar_safe_ptrdiff(buf, tag->tag_data))
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	ui32 limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
 
 	// Default values
 	mat->scale_x = (uf16_16){1,0};
@@ -223,7 +227,6 @@ err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *buf, swf_tag *tag)
 	mat->translate_y = get_signed_bitfield_fixed(buf, 5 + offset + mat->translate_bits, mat->translate_bits);
 	offset += 5 + (mat->translate_bits * 2);
 
-
 	if(get_bitfield_padding(buf, offset))
 	{
 		return (err_int){offset, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
@@ -238,8 +241,11 @@ err_int swf_color_transform_parse(pdata *state, COLOR_TRANSFORM *colt, uchar *bu
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
-
-	ui32 limit = tag->size - (buf - tag->tag_data);
+	if(tag->size < uchar_safe_ptrdiff(buf, tag->tag_data))
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	ui32 limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
 
 	// Default Values
 	colt->red_mult = (uf16_16){1,0};
@@ -307,117 +313,196 @@ err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_t
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
+	if(tag->tag != T_DEFINETEXT2 && tag->tag != T_DEFINETEXT)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS)
+	}
 	if(!(tag->tag_struct))
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
+	if(tag->size < uchar_safe_ptrdiff(buf, tag->tag_data))
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+
 	struct swf_tag_definetextx *text = (struct swf_tag_definetextx *)(tag->tag_struct);
 
-	ui32 limit = tag->size - (buf - tag->tag_data);
-	ui32 byte_offset = 0;
+	ui32 limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
+	ui32 offset = 0;
 	ui8 diff = text->family_version;
 	if(!diff || diff > 2)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
 	diff = (diff==2);
-	ui32 bit_offset = 0;
+	ui32 bit_itr = 0;
 
-	while(1)	// TODO: instead of using a singular text record, use a dnode list of text records and allocate them within this function and tie every element to the free list of the tag's parent
+	C_BOUNDS_EVAL(buf + offset, 1, state, limit, ESW_IMPROPER);
+	ui8 firstbyte = M_SANITIZE_BYTE(buf[offset]);
+	if((firstbyte & 0xF0) != 0x80)
 	{
-		C_BOUNDS_EVAL(buf, M_ALIGN(bit_offset + 8, 3)>>3, state, limit, ESW_IMPROPER);
-		ui8 firstbyte = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset, 8));
-		if(!firstbyte)
+		err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, 0);
+		if(ER_ERROR(ret))
+		{
+			return (err_int){0, ret};
+		}
+	}
+	offset++;
+	firstbyte &= 0xF;
+	trec->bitfields = firstbyte & 0xF;
+
+	if(firstbyte & 0x8)
+	{
+		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
+		trec->define_font_id = M_SANITIZE_UI16(geti16(buf + offset));
+		offset += 2;
+		// TODO: Find and connect the tag relevant to the id after the DefineFont tag check and registration is implemented
+	}
+	if(firstbyte & 0x4)
+	{
+		C_BOUNDS_EVAL(buf + offset, 3 + diff, state, limit, ESW_IMPROPER);
+		trec->color.red = M_SANITIZE_BYTE(buf[offset]);
+		trec->color.green = M_SANITIZE_BYTE(buf[offset+1]);
+		trec->color.blue = M_SANITIZE_BYTE(buf[offset+2]);
+		trec->color.alpha = 0xFF;
+		if(diff)
+		{
+			trec->color.alpha = M_SANITIZE_BYTE(buf[offset+3]);
+		}
+		offset += 3+diff;
+	}
+	if(firstbyte & 0x2)
+	{
+		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
+		trec->move_x = M_SANITIZE_UI16(geti16(buf + offset));
+		offset += 2;
+	}
+	if(firstbyte & 0x1)
+	{
+		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
+		trec->move_y = M_SANITIZE_UI16(geti16(buf + offset));
+		offset += 2;
+	}
+	if(firstbyte & 0x8)
+	{
+		C_BOUNDS_EVAL(buf + offset, 2, state, limit, ESW_IMPROPER);
+		trec->font_height = M_SANITIZE_UI16(geti16(buf + offset));
+		offset += 2;
+	}
+
+	C_BOUNDS_EVAL(buf + offset, 1, state, limit, ESW_IMPROPER);
+	trec->glyph_count = M_SANITIZE_BYTE(buf[offset]);	// Need to look into it more
+	if(!diff)
+	{
+		if(trec->glyph_count & 0x80)
+		{
+			trec->glyph_count &= 0x7F;	// TODO: Is this correct?
+		}
+	}
+	offset++;
+
+	ui8 glyph_width = text->glyph_bits;
+	ui8 advance_width = text->advance_bits;
+
+	C_BOUNDS_EVAL(buf + offset, M_ALIGN((trec->glyph_count) * (glyph_width + advance_width), 3)>>3, state, limit, ESW_IMPROPER);
+	err_ptr ret_ptr = alloc_push_freelist(state, sizeof(GLYPHENTRY) * trec->glyph_count, tag->parent_node);
+	if(ER_ERROR(ret_ptr.ret))
+	{
+		return (err_int){0, ret_ptr.ret};
+	}
+	trec->entries = (GLYPHENTRY *)(ret_ptr.pointer);
+
+	for(ui32 i=0; i<(trec->glyph_count); i++)
+	{
+		trec->entries[i].glyph_index = get_bitfield(buf+offset, (i * (glyph_width + advance_width)), glyph_width);
+		trec->entries[i].glyph_advance = get_signed_bitfield(buf+offset, (i * (glyph_width + advance_width)) + glyph_width, advance_width);
+	}
+	bit_itr = (trec->glyph_count) * (glyph_width + advance_width);
+
+	if(get_bitfield_padding(buf, (offset<<3) + bit_itr))
+	{
+		return (err_int){(offset<<3) + bit_itr, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
+	}
+	return (err_int){(offset<<3) + bit_itr, 0};
+}
+
+err_int swf_text_record_list_parse(pdata *state, uchar *buf, swf_tag *tag)
+{
+	if(!tag || !state || !buf)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	if(tag->tag != T_DEFINETEXT2 && tag->tag != T_DEFINETEXT)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS)
+	}
+	if(!(tag->tag_struct))
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	if(tag->size < uchar_safe_ptrdiff(buf, tag->tag_data))
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	struct swf_tag_definetextx *text = (struct swf_tag_definetextx *)(tag->tag_struct);
+
+	ui32 limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
+	ui32 offset = 0;
+	ui8 diff = text->family_version;
+	if(!diff || diff > 2)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	diff = (diff==2);
+	ui32 bit_itr = 0;
+	dnode *head = text->records;
+
+	while(1)
+	{
+		C_BOUNDS_EVAL(buf + offset, 1, state, limit, ESW_IMPROPER);
+		ui8 checknull = M_SANITIZE_BYTE(buf[offset]);
+		if(!checknull)
 		{
 			break;
 		}
-		if((firstbyte & 0xF0) != 0x80)
-		{
-			err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, 0);
-			if(ER_ERROR(ret))
-			{
-				return (err_int){0, ret};
-			}
-		}
-		bit_offset += 8;
-		firstbyte &= 0xF;
-		trec->bitfields = firstbyte & 0xF;
 
-		if(firstbyte & 0x8)
-		{
-			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 16, 3)>>3, state, limit, ESW_IMPROPER);
-			trec->define_font_id = M_SANITIZE_UI16(get_bitfield(buf + byte_offset, bit_offset, 16));
-			bit_offset += 16;
-			// TODO: Find and connect the tag relevant to the id.
-		}
-		if(firstbyte & 0x4)
-		{
-			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + ((3 + diff)<<3), 3)>>3, state, limit, ESW_IMPROPER);
-			trec->color.red = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset, 8));
-			trec->color.green = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset + 8, 8));
-			trec->color.blue = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset + 16, 8));
-			trec->color.alpha = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset + 24, 8) + ((diff ^ 1) * 0xFF));
-			bit_offset += (3 + diff)<<3;
-		}
-		if(firstbyte & 0x2)
-		{
-			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 16, 3)>>3, state, limit, ESW_IMPROPER);
-			trec->move_x = M_SANITIZE_UI16(get_bitfield(buf + byte_offset, bit_offset, 16));
-			bit_offset += 16;
-		}
-		if(firstbyte & 0x1)
-		{
-			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 16, 3)>>3, state, limit, ESW_IMPROPER);
-			trec->move_y = M_SANITIZE_UI16(get_bitfield(buf + byte_offset, bit_offset, 16));
-			bit_offset += 16;
-		}
-		if(firstbyte & 0x8)
-		{
-			C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 16, 3)>>3, state, limit, ESW_IMPROPER);
-			trec->font_height = M_SANITIZE_UI16(get_bitfield(buf + byte_offset, bit_offset, 16));
-			bit_offset += 16;
-		}
-
-		C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 8, 3)>>3, state, limit, ESW_IMPROPER);
-		trec->glyph_count = M_SANITIZE_BYTE(get_bitfield(buf + byte_offset, bit_offset, 8));	// Need to look into it more
-		if(!diff)
-		{
-			if(trec->glyph_count & 0x80)
-			{
-				trec->glyph_count &= 0x7F;	// TODO: Is this correct?
-			}
-		}
-		bit_offset += 8;
-
-		ui8 glyph_width = text->glyph_bits;
-		ui8 advance_width = text->advance_bits;
-
-		C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + ((trec->glyph_count) * (glyph_width + advance_width)), 3)>>3, state, limit, ESW_IMPROPER);
-		err_ptr ret_ptr = alloc_push_freelist(state, sizeof(GLYPHENTRY) * trec->glyph_count, tag->parent_node);
+		err_ptr ret_ptr = alloc_push_freelist(state, sizeof(dnode) + sizeof(TEXT_RECORD), tag->parent_node);
 		if(ER_ERROR(ret_ptr.ret))
 		{
 			return (err_int){0, ret_ptr.ret};
 		}
-		trec->entries = (GLYPHENTRY *)(ret_ptr.pointer);
 
-		for(ui32 i=0; i<(trec->glyph_count); i++)
+		dnode *new_node = (dnode *)ret_ptr.pointer;
+		new_node->prev = head;
+		new_node->data = (void *)((uchar *)new_node + sizeof(dnode));
+		new_node->to_free = NULL;
+		new_node->next = NULL;
+
+		if(head)
 		{
-			trec->entries[i].glyph_index = get_bitfield(buf+byte_offset, bit_offset + (i * (glyph_width + advance_width)), glyph_width);
-			trec->entries[i].glyph_advance = get_signed_bitfield(buf+byte_offset, bit_offset + (i * (glyph_width + advance_width)) + glyph_width, advance_width);
+			head->next = new_node;
 		}
-		bit_offset += (trec->glyph_count) * (glyph_width + advance_width);
-		byte_offset += M_ALIGN(bit_offset, 3)>>3;
-		bit_offset &= 0x7;
+		else
+		{
+			text->records = new_node;
+		}
+		head = new_node;
 
-		C_BOUNDS_EVAL(buf + byte_offset, M_ALIGN(bit_offset + 8, 3)>>3, state, limit, ESW_IMPROPER);
-	}
+		TEXT_RECORD *record = (TEXT_RECORD *)(new_node->data);
+		err_int ret_int = swf_text_record_parse(state, record, buf+offset, tag);
+		if(ER_ERROR(ret_int.ret))
+		{
+			return (err_int){0, ret_int.ret};
+		}
 
-	if(get_bitfield_padding(buf + byte_offset, bit_offset))
-	{
-		return (err_int){byte_offset, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
+		bit_itr = ret_int.integer;
+		offset += M_ALIGN(bit_itr, 3)>>3;
+		bit_itr &= 7;
 	}
-	return (err_int){byte_offset, 0};
+	return (err_int){(offset<<3) + bit_itr, 0};
 }
+
 
 #undef C_BOUNDS_EVAL
 

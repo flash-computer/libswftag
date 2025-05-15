@@ -398,7 +398,7 @@
 		MATRIX mat;
 		ui8 glyph_bits;
 		ui8 advance_bits;
-		TEXT_RECORD record;
+		dnode *records;
 	};
 
 	struct swf_tag_avm1action
