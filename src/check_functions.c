@@ -392,14 +392,8 @@ err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_t
 	}
 
 	C_BOUNDS_EVAL(buf + offset, 1, state, limit, ESW_IMPROPER);
-	trec->glyph_count = M_SANITIZE_BYTE(buf[offset]);	// Need to look into it more
-	if(!diff)
-	{
-		if(trec->glyph_count & 0x80)
-		{
-			trec->glyph_count &= 0x7F;	// TODO: Is this correct?
-		}
-	}
+	trec->glyph_count = M_SANITIZE_BYTE(buf[offset]);
+
 	offset++;
 
 	ui8 glyph_width = text->glyph_bits;
