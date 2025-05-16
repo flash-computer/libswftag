@@ -103,21 +103,14 @@ err_ptr check_tag(pdata *state, swf_tag *tag)
 	return (err_ptr){NULL, 0};
 }
 
+// Generates a generic tag. Use with push_tag to add it to the tag stream
 err_ptr spawn_tag(pdata *state, int tag, ui32 size, uchar *tag_data)
 {
 	if(!tag_valid(tag) && tag != F_FILEHEADER)
 	{
 		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
 	}
-	/*
-	 * --------------------------------------------------------------------------
-	 * --------------------------------------------------------------------------
-	 * --------------------------------------------------------------------------
-	Todo - Add additional verifications for tag_data and size
-	 * --------------------------------------------------------------------------
-	 * --------------------------------------------------------------------------
-	 * --------------------------------------------------------------------------
-	*/
+
 	swf_tag *new_tag = malloc(sizeof(swf_tag));
 	if(!new_tag)
 	{
@@ -128,6 +121,8 @@ err_ptr spawn_tag(pdata *state, int tag, ui32 size, uchar *tag_data)
 	new_tag->tag_and_size = ((tag<<6) & 0xFFC0) | ((size > 62 || ((tag != F_FILEHEADER)? tag_long_exclusive(tag) : 0))? 0x3F : (size & 0x3F));
 	new_tag->tag_data = tag_data;
 	new_tag->tag_id = 0;
+	new_tag->parent_node = NULL;
+	new_tag->tag_struct = NULL;
 	return (err_ptr){new_tag, 0};
 }
 
@@ -144,11 +139,16 @@ err_int swf_rect_parse(pdata *state, RECT *rect, uchar *buf, swf_tag *tag)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
-	ui32 limit = state->movie_size;
-	if(tag)		// Additional test for when the tag is F_FILEHEADER, and the argument consequently passed is null, later I'll separate out movie_rect, movie_frame_rate and movie_frame_count from pdata into a swf_pseudotag_fileheader struct, and then the tag it can just be any normal tag
+	if(buf < tag->tag_data)
 	{
-		limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
+		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
+	if(tag->size < uchar_safe_ptrdiff(buf, tag->tag_data))
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	ui32 limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
+
 	C_BOUNDS_EVAL(buf, 1, state, limit, ESW_IMPROPER);
 
 	rect->field_size = (M_SANITIZE_BYTE(buf[0]) & 0xF8)>>3;	// Since the byte is right aligned, works for higher values of CHAR_BIT just fine
@@ -172,6 +172,10 @@ err_int swf_rect_parse(pdata *state, RECT *rect, uchar *buf, swf_tag *tag)
 err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *buf, swf_tag *tag)
 {
 	if(!tag || !state || !mat || !buf)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	if(buf < tag->tag_data)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
@@ -238,6 +242,10 @@ err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *buf, swf_tag *tag)
 err_int swf_color_transform_parse(pdata *state, COLOR_TRANSFORM *colt, uchar *buf, swf_tag *tag)
 {
 	if(!tag || !state || !colt || !buf)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	if(buf < tag->tag_data)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
@@ -310,6 +318,10 @@ err_int swf_color_transform_parse(pdata *state, COLOR_TRANSFORM *colt, uchar *bu
 err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_tag *tag)
 {
 	if(!tag || !state || !trec || !buf)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	if(buf < tag->tag_data)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
@@ -432,6 +444,10 @@ err_int swf_text_record_list_parse(pdata *state, uchar *buf, swf_tag *tag)
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
 	}
+	if(buf < tag->tag_data) // N1256: "For the purposes of these operators, a pointer to an object that is not an element of an array behaves the same as a pointer to the first element of an array of length one with the type of the object as its element type.". Does this mean if buf is outside the movie, this comparision is still well defined? TODO. Regardless, the functions that call this ensure that it's within bounds.
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
 	if(tag->size < uchar_safe_ptrdiff(buf, tag->tag_data))
 	{
 		C_RAISE_ERR_INT(0, EFN_ARGS);
@@ -499,43 +515,57 @@ err_int swf_text_record_list_parse(pdata *state, uchar *buf, swf_tag *tag)
 
 err file_header_verification(pdata *state)
 {
-	err_int ret = swf_rect_parse(state, &(state->movie_rect), (uchar *)state->u_movie, NULL);
+	if(!state)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+
+	err_ptr tag_ret = spawn_tag(state, F_FILEHEADER, state->movie_size, state->u_movie);
+	if(ER_ERROR(tag_ret.ret))
+	{
+		return tag_ret.ret;
+	}
+
+	tag_ret.ret = push_tag(state, tag_ret.pointer);
+	if(ER_ERROR(tag_ret.ret))
+	{
+		return tag_ret.ret;
+	}
+
+	tag_ret.ret = push_scope(state, tag_ret.pointer);
+	if(ER_ERROR(tag_ret.ret))
+	{
+		return tag_ret.ret;
+	}
+
+	dnode *node = state->tag_stream_end;
+	swf_tag *tag = (swf_tag *)(node->data);
+
+	tag->parent_node = node;
+	tag->tag_struct = &(state->header);
+
+	FILEHEADER *header = &(state->header);
+
+	err_int ret = swf_rect_parse(state, &(header->movie_rect), (uchar *)state->u_movie, tag);
 	if(ER_ERROR(ret.ret))
 	{
 		return ret.ret;
 	}
 
-	int offset_end = M_ALIGN((ret.integer), 3)>>3;
-	if(M_BUF_BOUNDS_CHECK(state->u_movie, offset_end + 4, state))
+	tag->size = M_ALIGN((ret.integer), 3)>>3;
+	if(M_BUF_BOUNDS_CHECK(state->u_movie, (tag->size) + 4, state))
 	{
 		C_RAISE_ERR(ESW_SHORTFILE);
 	}
 
-	state->movie_fr.lo = state->u_movie[offset_end];
-	state->movie_fr.hi = state->u_movie[offset_end + 1];
-	state->movie_frame_count = geti16((uchar *)state->u_movie + offset_end + 2);
+	header->movie_fr.lo = state->u_movie[tag->size];
+	header->movie_fr.hi = state->u_movie[tag->size + 1];
+	header->movie_frame_count = geti16((uchar *)state->u_movie + tag->size + 2);
 
-	offset_end += 4;
+	tag->size += 4;
+	tag->tag_and_size = (tag->tag_and_size & 0xFFC0) | ((tag->size < 0x3F)? tag->size : 0x3F);
 
-	state->tag_buffer = state->u_movie + offset_end;
-
-	err_ptr new_tag = spawn_tag(state, F_FILEHEADER, offset_end, state->u_movie);
-	if(ER_ERROR(new_tag.ret))
-	{
-		return new_tag.ret;
-	}
-
-	new_tag.ret = push_tag(state, new_tag.pointer);
-	if(ER_ERROR(new_tag.ret))
-	{
-		return new_tag.ret;
-	}
-
-	new_tag.ret = push_scope(state, new_tag.pointer);
-	if(ER_ERROR(new_tag.ret))
-	{
-		return new_tag.ret;
-	}
+	state->tag_buffer = state->u_movie + tag->size;
 
 	return 0;
 }
@@ -607,15 +637,9 @@ err check_tag_stream(pdata *state)
 	}
 }
 
-// The FILE cursor should point at the beginning of the swf signature/file
-err check_file_validity(pdata *state, FILE *swf)
+err check_signature(pdata *state)
 {
 	uchar *signature = state->signature;
-
-	if(fread(signature, 1, 8, swf) < 8)
-	{
-		C_RAISE_ERR(EFL_READ);
-	}
 
 	if(M_SANITIZE_BYTE(signature[1]) != 'W' || M_SANITIZE_BYTE(signature[2]) != 'S')		// Not using short because we abide by standards to the best of our abilities here
 	{
@@ -638,18 +662,66 @@ err check_file_validity(pdata *state, FILE *swf)
 	}
 
 	state->compression = M_SANITIZE_BYTE(signature[0]);
-	err ret_err = 0;
+
+	return 0;
+}
+
+err check_buffer_validity(pdata *state, uchar *buffer, ui32 size)
+{
+	if(size < 8)
+	{
+		C_RAISE_ERR(ESW_SHORTFILE);
+	}
+
+	err ret_err = check_signature(state);
 
 	switch(state->compression)
 	{
 		case 'F':
-			ret_err = movie_uncomp(swf, state);	// Returns error if file length is less than advertised in movie_size, otherwise loads movie_size bytes after the signature in u_movie and returns 0
+			ret_err = movie_buffer_uncomp(state, buffer, size-8);
 			break;
 		case 'C':
-			ret_err = movie_deflate(swf, state); // For now, the compressed ones simply exit
+			ret_err = movie_buffer_deflate(state, buffer, size-8);
 			break;
 		case 'Z':
-			ret_err = movie_lzma(swf, state);
+			ret_err = movie_buffer_lzma(state, buffer, size-8);
+			break;
+		default:
+			ret_err = 0;
+			C_RAISE_ERR(ESW_SIGNATURE);
+	}
+	if(ER_ERROR(ret_err))
+	{
+		return ret_err;
+	}
+
+	return check_tag_stream(state);
+}
+
+// The FILE cursor should point at the beginning of the swf signature/file
+err check_file_validity(pdata *state, FILE *swf)
+{
+	if(fread(state->signature, 1, 8, swf) < 8)
+	{
+		if(feof(swf))
+		{
+			C_RAISE_ERR(ESW_SHORTFILE);
+		}
+		C_RAISE_ERR(EFL_READ);
+	}
+
+	err ret_err = check_signature(state);
+
+	switch(state->compression)
+	{
+		case 'F':
+			ret_err = movie_file_uncomp(state, swf);	// Returns error if file length is less than advertised in movie_size, otherwise loads movie_size bytes after the signature in u_movie and returns 0
+			break;
+		case 'C':
+			ret_err = movie_file_deflate(state, swf); // Implemented with zlib for now
+			break;
+		case 'Z':
+			ret_err = movie_file_lzma(state, swf); // Unimplemented. simply raises a misc error
 			break;
 		default:
 			ret_err = 0;

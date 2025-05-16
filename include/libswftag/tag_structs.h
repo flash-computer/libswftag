@@ -280,9 +280,21 @@
 	typedef struct parse_peculiarity peculiar;
 
 	// FileHeader pseudo-tag and DefineSprite are the only tags for which a new swf_scope opens. END tags close the scope
+	struct swf_pseudotag_fileheader
+	{
+		RECT movie_rect;
+		// 8.8 fixed point
+		uf8_8 movie_fr;
+		ui16 movie_frame_count;
+	};
+	typedef struct swf_pseudotag_fileheader FILEHEADER;
+
+	#define PDATA_FLAG_MOVIE_ALLOC 0x1
 
 	struct parse_data
 	{
+		ui8 mgmt_flags;
+
 		ui8 compression;
 		ui8 version;
 		ui32 movie_size;
@@ -294,10 +306,7 @@
 		ui8 avm1;
 		ui8 avm2;
 
-		RECT movie_rect;
-		// 8.8 fixed point
-		uf8_8 movie_fr;
-		ui16 movie_frame_count;
+		FILEHEADER header;
 
 		dnode *pec_list;	// List of parsing peculiarities that are not necessarily errors
 		dnode *pec_list_end;

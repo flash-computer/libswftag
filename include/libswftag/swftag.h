@@ -217,6 +217,7 @@ err id_wipe_list(pdata *state);
 err id_register(pdata *state, ui16 id, swf_tag *tag);
 
 err init_parse_data(pdata *state);
+err destroy_parse_data(pdata *state);
 
 err_ptr append_list(pdata *state, dnode *node, size_t data_sz);
 err remove_list(pdata *state, dnode *node);

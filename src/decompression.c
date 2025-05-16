@@ -11,25 +11,64 @@ To implement:
 	Rolling/Normal DEFLATE compression/decompression
 */
 
-#define C_RAISE_ERR(error) ER_RAISE_ERROR_ERR(handler_ret, state, error)
+// Move the decompression logic inside these later
+err movie_deflate(pdata *state);
+err movie_lzma(pdata *state);
 
-err movie_uncomp(FILE *swf, pdata *state)
+#define C_RAISE_ERR(error) {err handler_ret; ER_RAISE_ERROR_ERR(handler_ret, state, error);}
+
+err movie_buffer_uncomp(pdata *state, uchar *buffer, ui32 size)
 {
-	err handler_ret;
+	if(!state || !buffer)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+
+	state->u_movie = buffer;
+	state->movie_size = size;
+
+	if(size < (state->reported_movie_size))
+	{
+		err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	else if(size > (state->reported_movie_size))
+	{
+		state->movie_size = state->reported_movie_size;
+		err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+err movie_file_uncomp(pdata *state, FILE *swf)
+{
+	if(!state || !swf)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
 	state->u_movie = malloc(state->reported_movie_size);
+	state->mgmt_flags |= PDATA_FLAG_MOVIE_ALLOC;
 	if(!(state->u_movie))
 	{
-		return EMM_ALLOC;
+		C_RAISE_ERR(EMM_ALLOC);
 	}
 	state->movie_size = fread(state->u_movie, 1, state->reported_movie_size, swf);
 	if(state->movie_size < state->reported_movie_size)
 	{
 		if(feof(swf))
 		{
-			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
-			if(ER_ERROR(handler_ret))
+			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
+			if(ER_ERROR(ret))
 			{
-				return handler_ret;
+				return ret;
 			}
 		}
 		else
@@ -42,23 +81,29 @@ err movie_uncomp(FILE *swf, pdata *state)
 		int read_more = fgetc(swf);
 		if(read_more != EOF)
 		{
-			handler_ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
-			if(ER_ERROR(handler_ret))
+			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
+			if(ER_ERROR(ret))
 			{
-				return handler_ret;
+				return ret;
 			}
 		}
 	}
 	return 0;
 }
 
-err movie_deflate(FILE *swf, pdata *state)
+err movie_buffer_deflate(pdata *state, uchar *buffer, ui32 size)
 {
-	err handler_ret;
+	C_RAISE_ERR(EFN_NIB_HI);
+	return 0;
+}
 
+err movie_file_deflate(pdata *state, FILE *swf)
+{
 	uchar *uncomp = malloc(state->reported_movie_size);
 	if (!uncomp)
-		return EMM_ALLOC;
+	{
+		C_RAISE_ERR(EMM_ALLOC);
+	}
 
 	// Never overflows because reported_movie_size never exceeds 0xFFFFFFFF, and the minimum value of UINTMAX_MAX conferred by N1256 is (1<<64)-1
 	uintmax_t max_compressed_size = (state->reported_movie_size) +  (5 * (uintmax_t)M_CEILDIV(state->reported_movie_size, 65535));
@@ -119,6 +164,7 @@ end:
 
 	state->movie_size = uchar_safe_ptrdiff(zs.next_out, uncomp);
 	state->u_movie = uncomp;
+	state->mgmt_flags |= PDATA_FLAG_MOVIE_ALLOC;
 
 	if (zret < 0)
 	{
@@ -135,10 +181,10 @@ end:
 			// flash could still play this
 			// fc: Detecting corrupt files is sort of the point though? A decompression error is as fatal as they come imho, because nothing can be ascertained about what little was decoded. But, I guess I'd wait for more results from testing before making a decision on this.
 			// TODO
-			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);	// In all honesty, the offsets throughout the libraray for PEC_FILESIZE_SMALL are not consistent, so I should fix that before changing this, but since the peculiarity interface isn't really mature yet, I think this is fine for now.
-			if(ER_ERROR(handler_ret))
+			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);	// In all honesty, the offsets throughout the libraray for PEC_FILESIZE_SMALL are not consistent, so I should fix that before changing this, but since the peculiarity interface isn't really mature yet, I think this is fine for now.
+			if(ER_ERROR(ret))
 			{
-				return handler_ret;
+				return ret;
 			}
 		}
 	}
@@ -175,19 +221,19 @@ end:
 		if (!data_remaining)
 		{
 			// unexpected end of file
-			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
-			if(ER_ERROR(handler_ret))
+			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
+			if(ER_ERROR(ret))
 			{
-				return handler_ret;
+				return ret;
 			}
 		}
 		else if (data_remaining && !zs.avail_out)
 		{
 			// header size too short
-			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);	// TODO: May need it's own peculiarity
-			if(ER_ERROR(handler_ret))
+			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);	// TODO: May need it's own peculiarity
+			if(ER_ERROR(ret))
 			{
-				return handler_ret;
+				return ret;
 			}
 		}
 	}
@@ -198,19 +244,19 @@ end:
 		if (data_remaining)
 		{
 			// junk data after compressed body
-			handler_ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
-			if(ER_ERROR(handler_ret))
+			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
+			if(ER_ERROR(ret))
 			{
-				return handler_ret;
+				return ret;
 			}
 		}
 		else if (!data_remaining && zs.avail_out)
 		{
 			// header size too long
-			handler_ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
-			if(ER_ERROR(handler_ret))
+			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
+			if(ER_ERROR(ret))
 			{
-				return handler_ret;
+				return ret;
 			}
 		}
 	}
@@ -218,9 +264,14 @@ end:
 	return 0;
 }
 
-err movie_lzma(FILE *swf, pdata *state)
+err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 {
-	err handler_ret;
+	C_RAISE_ERR(EFN_NIB_HI);
+	return 0;
+}
+
+err movie_file_lzma(pdata *state, FILE *swf)
+{
 	C_RAISE_ERR(EFN_NIB_HI);
 	return 0;
 }

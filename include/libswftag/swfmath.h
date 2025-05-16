@@ -17,6 +17,7 @@
 // ONLY use on objects allocated in a multiple that fits inside 32 bits, where the pointer has been gradually differentiated from the base pointer doing a bounds check **before** any change
 // ret_var should be of the type uintmax_t
 #if PTRDIFF_MAX < 0xFFFFFFFF
+	// Equality between void * is well defined, but are relational operations well defined too? TODO
 	#define M_SAFE_PTRDIIFF32(minuend, subtrahend, ptr_type, ret_var)	{ret_var = 0; ptr_type * safe_diff_ptr = ((ptr_type *)subtrahend); while(1){ptr_type * temp_diff_ptr = (safe_diff_ptr + (uintmax_t)PTRDIFF_MAX);if(temp_diff_ptr > ((ptr_type *)minuend) || temp_diff_ptr < ((ptr_type *)subtrahend)){ret_var += ((ptr_type *)minuend) - safe_diff_ptr; break};ret_var += (uintmax_t)PTRDIFF_MAX; safe_diff_ptr += (uintmax_t)PTRDIFF_MAX;}}
 	#ifndef UCHAR_PTRDIFF_FN
 		#define UCHAR_PTRDIFF_FN

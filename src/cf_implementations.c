@@ -36,7 +36,6 @@ err check_definetext_common(pdata *state, swf_tag *tag_data)
 
 	C_INIT_TAG(swf_tag_definetextx);
 	C_TAG_BOUNDS_EVAL(base, 2);
-	tag_struct->family_version = 1;
 
 	tag_struct->id = geti16((uchar *)base);
 	offset += 2;

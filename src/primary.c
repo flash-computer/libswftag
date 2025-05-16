@@ -188,15 +188,16 @@ err init_parse_data(pdata *state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
+	state->mgmt_flags = 0;
 	state->version = 0;
 	state->movie_size = 0;
 	state->reported_movie_size = 0;
 	state->avm1 = 0;
 	state->avm2 = 0;
-	state->movie_rect.field_size = 0;
-	state->movie_rect.fields[0] = state->movie_rect.fields[1] = state->movie_rect.fields[2] = state->movie_rect.fields[3] = 0;
-	state->movie_fr.hi = state->movie_fr.lo = 0;
-	state->movie_frame_count = 0;
+	state->header.movie_rect.field_size = 0;
+	state->header.movie_rect.fields[0] = state->header.movie_rect.fields[1] = state->header.movie_rect.fields[2] = state->header.movie_rect.fields[3] = 0;
+	state->header.movie_fr.hi = state->header.movie_fr.lo = 0;
+	state->header.movie_frame_count = 0;
 	state->u_movie = NULL;
 	state->pec_list = NULL;
 	state->pec_list_end = NULL;
@@ -210,6 +211,62 @@ err init_parse_data(pdata *state)
 	{
 		state->id_list[i] = NULL;
 	}
+	return 0;
+}
+
+err destroy_parse_data(pdata *state)
+{
+	if(!state)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+	state->avm1 = 0;
+	state->avm2 = 0;
+	state->header.movie_rect.field_size = 0;
+	state->header.movie_rect.fields[0] = state->header.movie_rect.fields[1] = state->header.movie_rect.fields[2] = state->header.movie_rect.fields[3] = 0;
+	state->header.movie_fr.hi = state->header.movie_fr.lo = 0;
+	state->header.movie_frame_count = 0;
+	if(state->mgmt_flags & PDATA_FLAG_MOVIE_ALLOC)
+	{
+		S_FREE(state->u_movie);
+	}
+	state->u_movie = NULL;
+	while(state->pec_list_end)
+	{
+		err ret = pop_peculiarity(state);
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	state->tag_buffer = NULL;
+	while(state->tag_stream_end)
+	{
+		err ret = pop_tag(state);
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	while(state->scope_stack)
+	{
+		err ret = pop_scope(state);
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	for(ui16 i=0; i<0x100; i++)
+	{
+		S_FREE(state->id_list[i]);
+		state->id_list[i] = NULL;
+	}
+	state->n_tags = 0;
+	state->version = 0;
+	state->movie_size = 0;
+	state->reported_movie_size = 0;
+
+	state->mgmt_flags = 0;
 	return 0;
 }
 
