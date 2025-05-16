@@ -330,12 +330,9 @@ err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_t
 
 	ui32 limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
 	ui32 offset = 0;
-	ui8 diff = text->family_version;
-	if(!diff || diff > 2)
-	{
-		C_RAISE_ERR_INT(0, EFN_ARGS);
-	}
-	diff = (diff==2);
+	
+	ui8 diff = (tag->tag == T_DEFINETEXT2);
+	text->family_version = diff + 1;
 	ui32 bit_itr = 0;
 
 	C_BOUNDS_EVAL(buf + offset, 1, state, limit, ESW_IMPROPER);
@@ -443,12 +440,8 @@ err_int swf_text_record_list_parse(pdata *state, uchar *buf, swf_tag *tag)
 
 	ui32 limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
 	ui32 offset = 0;
-	ui8 diff = text->family_version;
-	if(!diff || diff > 2)
-	{
-		C_RAISE_ERR_INT(0, EFN_ARGS);
-	}
-	diff = (diff==2);
+	ui8 diff = (tag->tag == T_DEFINETEXT2);
+	text->family_version = diff + 1;
 	ui32 bit_itr = 0;
 	dnode *head = text->records;
 

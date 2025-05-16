@@ -20,6 +20,61 @@
 // Yes it's horrible, but it's less horrible than other options imho
 #define C_INIT_TAG(newstruct) err_ptr tag_ret=alloc_push_freelist(state, sizeof(struct newstruct), tag_data->parent_node);if(ER_ERROR(tag_ret.ret))return tag_ret.ret;struct newstruct *tag_struct=tag_ret.pointer;tag_data->tag_struct=tag_struct
 
+/*----------------------------------------------------------Duplicated code----------------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
+err check_definetext_common(pdata *state, swf_tag *tag_data)
+{
+	err handler_ret;
+	if(!tag_data || !state)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+
+	C_INIT_TAG(swf_tag_definetextx);
+	C_TAG_BOUNDS_EVAL(base, 2);
+	tag_struct->family_version = 1;
+
+	tag_struct->id = geti16((uchar *)base);
+	offset += 2;
+	err_int ret = swf_rect_parse(state, &(tag_struct->rect), base + offset, tag_data);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+	offset += M_ALIGN(ret.integer, 3)>>3;
+
+	ret = swf_matrix_parse(state, &(tag_struct->mat), base + offset, tag_data);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+	offset += M_ALIGN(ret.integer, 3)>>3;
+
+	C_TAG_BOUNDS_EVAL(base + offset, 2);
+
+	tag_struct->glyph_bits = M_SANITIZE_BYTE(base[offset]);
+	tag_struct->advance_bits = M_SANITIZE_BYTE(base[offset+1]);
+	offset += 2;
+
+	tag_struct->records = NULL;
+	ret = swf_text_record_list_parse(state, base+offset, tag_data);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+	offset += M_ALIGN(ret.integer, 3)>>3;
+
+	return 0;
+}
+
+/*-------------------------------------------------------------Functions-------------------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
 err check_invalidtag(pdata *state, swf_tag *tag_data)
 {
 	return push_peculiarity(state, PEC_INVAL_TAG, tag_data->tag_data - state->u_movie);
@@ -245,49 +300,7 @@ err check_definefont(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET-
 
 err check_definetext(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISHED--//
 {
-	err handler_ret;
-	if(!tag_data || !state)
-	{
-		C_RAISE_ERR(EFN_ARGS);
-	}
-	uchar *base = tag_data->tag_data;
-	ui32 offset = 0;
-
-	C_INIT_TAG(swf_tag_definetextx);
-	C_TAG_BOUNDS_EVAL(base, 2);
-	tag_struct->family_version = 1;
-
-	tag_struct->id = geti16((uchar *)base);
-	offset += 2;
-	err_int ret = swf_rect_parse(state, &(tag_struct->rect), base + offset, tag_data);
-	if(ER_ERROR(ret.ret))
-	{
-		return ret.ret;
-	}
-	offset += M_ALIGN(ret.integer, 3)>>3;
-
-	ret = swf_matrix_parse(state, &(tag_struct->mat), base + offset, tag_data);
-	if(ER_ERROR(ret.ret))
-	{
-		return ret.ret;
-	}
-	offset += M_ALIGN(ret.integer, 3)>>3;
-
-	C_TAG_BOUNDS_EVAL(base + offset, 2);
-
-	tag_struct->glyph_bits = M_SANITIZE_BYTE(base[offset]);
-	tag_struct->advance_bits = M_SANITIZE_BYTE(base[offset+1]);
-	offset += 2;
-
-	tag_struct->records = NULL;
-	ret = swf_text_record_list_parse(state, base+offset, tag_data);
-	if(ER_ERROR(ret.ret))
-	{
-		return ret.ret;
-	}
-	offset += M_ALIGN(ret.integer, 3)>>3;
-
-	return 0;
+	return check_definetext_common(state, tag_data);
 }
 
 err check_doaction(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISHED--//
@@ -526,12 +539,7 @@ err check_defineshape3(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YE
 
 err check_definetext2(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
 {
-	err handler_ret;
-	if(!tag_data || !state)
-	{
-		C_RAISE_ERR(EFN_ARGS);
-	}
-	return 0;
+	return check_definetext_common(state, tag_data);
 }
 
 err check_definebutton2(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
