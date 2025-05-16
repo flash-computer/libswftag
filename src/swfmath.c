@@ -80,6 +80,6 @@ uf16_16 get_signed_bitfield_fixed(uchar *buffer, ui32 base, ui8 offset)	// The s
 ui8 get_bitfield_padding(uchar *buffer, ui32 base)
 {
 	uchar last = *(buffer + (base>>3));
-	uchar mask = (1<<(8 - (base & 0x7))) - 1;
+	uchar mask = (1<<(8 - ((((base & 0x7) + 7) & 7) + 1))) - 1;
 	return (last & mask);
 }

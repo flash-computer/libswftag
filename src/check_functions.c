@@ -411,7 +411,7 @@ err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_t
 	}
 	bit_itr = (trec->glyph_count) * (glyph_width + advance_width);
 
-	if(get_bitfield_padding(buf, (offset<<3) + bit_itr))
+	if(get_bitfield_padding(buf + offset, bit_itr))
 	{
 		return (err_int){(offset<<3) + bit_itr, push_peculiarity(state, PEC_BITFIELD_PADDING, 0)};
 	}
