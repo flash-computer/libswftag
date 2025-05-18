@@ -681,9 +681,25 @@ err check_buffer_validity(pdata *state, uchar *buffer, ui32 size)
 			ret_err = movie_buffer_uncomp(state, buffer, size-8);
 			break;
 		case 'C':
+			if(state->version < VER_INTRO_DEFLATE)
+			{
+				ret_err = push_peculiarity(state, PEC_TIME_TRAVEL, 0);
+				if(ER_ERROR(ret_err))
+				{
+					return ret_err;
+				}
+			}
 			ret_err = movie_buffer_deflate(state, buffer, size-8);
 			break;
 		case 'Z':
+			if(state->version < VER_INTRO_LZMA)
+			{
+				ret_err = push_peculiarity(state, PEC_TIME_TRAVEL, 0);
+				if(ER_ERROR(ret_err))
+				{
+					return ret_err;
+				}
+			}
 			ret_err = movie_buffer_lzma(state, buffer, size-8);
 			break;
 		default:
@@ -718,9 +734,25 @@ err check_file_validity(pdata *state, FILE *swf)
 			ret_err = movie_file_uncomp(state, swf);	// Returns error if file length is less than advertised in movie_size, otherwise loads movie_size bytes after the signature in u_movie and returns 0
 			break;
 		case 'C':
+			if(state->version < VER_INTRO_DEFLATE)
+			{
+				ret_err = push_peculiarity(state, PEC_TIME_TRAVEL, 0); // TODO: Add a new peculiarity for this.
+				if(ER_ERROR(ret_err))
+				{
+					return ret_err;
+				}
+			}
 			ret_err = movie_file_deflate(state, swf); // Implemented with zlib for now
 			break;
 		case 'Z':
+			if(state->version < VER_INTRO_LZMA)
+			{
+				ret_err = push_peculiarity(state, PEC_TIME_TRAVEL, 0);
+				if(ER_ERROR(ret_err))
+				{
+					return ret_err;
+				}
+			}
 			ret_err = movie_file_lzma(state, swf); // Unimplemented. simply raises a misc error
 			break;
 		default:

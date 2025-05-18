@@ -364,13 +364,33 @@ err check_definefontinfo(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT
 	return 0;
 }
 
-err check_definesound(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_definesound(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT FINISHED--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+	C_INIT_TAG(swf_tag_definesound);
+
+	C_TAG_BOUNDS_EVAL(base, 7);
+	tag_struct->id = geti16(base);
+	id_register(state, tag_struct->id, tag_data);
+	tag_struct->format = (base[2] & 0xF0)>>4;
+	tag_struct->rate_power = (base[2] & 0xC)>>2;
+	tag_struct->bitfields = (base[2] & 3);
+
+	tag_struct->samples_count = geti32(base+3);
+
+	if(!ANALYZE_DEEP)
+	{
+		C_TAG_BOUNDS_EVAL(base, tag_data->size);
+		return 0;
+	}
+
+	// Thorough checks will go here.
 	return 0;
 }
 

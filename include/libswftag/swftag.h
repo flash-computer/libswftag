@@ -128,6 +128,9 @@
 #define FLTR_COLORMATRIX 6
 #define FLTR_GRADIENTBEVEL 7
 
+#define VER_INTRO_DEFLATE 6
+#define VER_INTRO_LZMA 13
+
 #include<stdint.h>
 #include<stddef.h>
 

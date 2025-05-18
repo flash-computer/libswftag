@@ -445,6 +445,7 @@
 
 	struct swf_tag_definesound
 	{
+		ui16 id;
 		ui8 format;
 		ui8 rate_power;	// Determines the exponent of 2 to multiply with 5512.5Hz
 
