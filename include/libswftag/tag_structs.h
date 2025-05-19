@@ -268,6 +268,35 @@
 	};
 	typedef struct swf_filter FILTER;
 
+	struct swf_envelope
+	{
+		ui32 position;
+		ui16 left_vol;
+		ui16 right_vol;
+	};
+	typedef struct swf_envelope ENVELOPE;
+
+	struct swf_sound_info
+	{
+		ui16 sound_id;
+		swf_tag *sound_tag;
+		// stop : 0x20
+		// singular : 0x10
+		// has_envelope : 0x8
+		// has_loops : 0x4
+		// has_out_point : 0x2
+		// has_in_point : 0x1
+		ui8 bitfields;
+
+		ui32 in_point;
+		ui32 out_point;
+		ui16 loop_count;
+
+		ui8 envelope_count;
+		ENVELOPE *envelopes;
+	};
+	typedef struct swf_sound_info SOUND_INFO;
+
 
 /*--------------------------- LIB STRUCTS ---------------------------*/
 /*---------------------------------|---------------------------------*/
@@ -455,6 +484,11 @@
 
 		ui32 samples_count;
 		uchar *sound_data;
+	};
+
+	struct swf_tag_startsound
+	{
+		SOUND_INFO info;
 	};
 
 #endif

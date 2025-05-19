@@ -394,13 +394,24 @@ err check_definesound(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT
 	return 0;
 }
 
-err check_startsound(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_startsound(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT FINISHED--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+	C_INIT_TAG(swf_tag_startsound);
+	err_int ret = swf_sound_info_parse(&(tag_struct->info), state, base, tag_data);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+
+	offset = M_ALIGN(ret.integer, 3)>>3;
+	// if(offset < tag_data->size) TODO
 	return 0;
 }
 

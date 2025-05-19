@@ -503,9 +503,104 @@ err_int swf_text_record_list_parse(pdata *state, uchar *buf, swf_tag *tag)
 		offset += M_ALIGN(bit_itr, 3)>>3;
 		bit_itr &= 7;
 	}
+	// TODO: Just return the number of bytes. Number of bits can overflow ui32 for this.
 	return (err_int){(offset<<3) + bit_itr, 0};
 }
 
+err_int swf_sound_info_parse(pdata *state, SOUND_INFO *soin, uchar *buf, swf_tag *tag)
+{
+	if(!tag || !state || !soin || !buf)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	if(buf < tag->tag_data)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	if(tag->size < uchar_safe_ptrdiff(buf, tag->tag_data))
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	ui32 limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
+	ui32 offset = 0;
+
+	C_BOUNDS_EVAL(buf, 3, state, limit, ESW_IMPROPER);
+
+	soin->sound_id = geti16(buf);
+	err_ptr ret = id_get_tag(state, soin->sound_id);
+	if(ER_ERROR(ret.ret))
+	{
+		return (err_int){0, ret.ret};
+	}
+	soin->sound_tag = ret.pointer;
+	soin->bitfields = M_SANITIZE_BYTE(buf[2]);
+	if(soin->bitfields & 0xC0)
+	{
+		ret.ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, 0);
+		if(ER_ERROR(ret.ret))
+		{
+			return (err_int){0, ret.ret};
+		}
+		soin->bitfields = 0;
+	}
+	offset = 3;
+	if(!(soin->sound_tag))
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS); // TODO : Add a new error type?
+	}
+	swf_tag *st = soin->sound_tag;
+	if(st->tag != T_DEFINESOUND || st->tag_struct == NULL)
+	{
+		C_RAISE_ERR_INT(0, EFN_ARGS);
+	}
+	soin->in_point = 0;
+	soin->out_point = ((struct swf_tag_definesound *)(st->tag_struct))->samples_count; // TODO: Refine defaults
+	soin->loop_count = 0;
+	soin->envelope_count = 0;
+	soin->envelopes = NULL;
+
+	if(soin->bitfields & 0x1)
+	{
+		C_BOUNDS_EVAL(buf+offset, 4, state, limit, ESW_IMPROPER);
+		soin->in_point = geti32(buf+offset);
+		offset += 4;
+	}
+	if(soin->bitfields & 0x2)
+	{
+		C_BOUNDS_EVAL(buf+offset, 4, state, limit, ESW_IMPROPER);
+		soin->out_point = geti32(buf+offset);
+		offset += 4;
+	}
+	if(soin->bitfields & 0x4)
+	{
+		C_BOUNDS_EVAL(buf+offset, 2, state, limit, ESW_IMPROPER);
+		soin->loop_count = geti16(buf+offset);
+		offset += 2;
+	}
+	if(soin->bitfields & 0x8)
+	{
+		C_BOUNDS_EVAL(buf+offset, 1, state, limit, ESW_IMPROPER);
+		soin->envelope_count = M_SANITIZE_BYTE(buf[offset]);
+		offset += 1;
+		ret = alloc_push_freelist(state, (soin->envelope_count) * sizeof(ENVELOPE), tag->parent_node);
+		if(ER_ERROR(ret.ret))
+		{
+			return (err_int){0, ret.ret};
+		}
+		soin->envelopes = (ENVELOPE *)ret.pointer;
+		for(ui8 i=0; i<soin->envelope_count; i++)
+		{
+			C_BOUNDS_EVAL(buf+offset, 8, state, limit, ESW_IMPROPER);
+			ENVELOPE *env = soin->envelopes + i;
+			env->position = geti32(buf+offset);
+			// TODO: position checks
+			env->left_vol = geti16(buf+offset+4);
+			env->right_vol = geti16(buf+offset+6);
+			offset += 8;
+		}
+	}
+	return (err_int){offset<<3, 0};
+};
 
 #undef C_BOUNDS_EVAL
 

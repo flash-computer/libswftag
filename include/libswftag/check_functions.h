@@ -98,6 +98,7 @@ err_int swf_rect_parse(pdata *state, RECT *rect, uchar *buf, swf_tag *tag);
 err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *buf, swf_tag *tag);
 err_int swf_color_transform_parse(pdata *state, COLOR_TRANSFORM *colt, uchar *buf, swf_tag *tag);
 err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_tag *tag);
+err_int swf_sound_info_parse(pdata *state, SOUND_INFO *soin, uchar *buf, swf_tag *tag);
 
 err_int swf_text_record_list_parse(pdata *state, uchar *buf, swf_tag *tag);
 
