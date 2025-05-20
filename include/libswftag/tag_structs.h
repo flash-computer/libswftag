@@ -491,4 +491,18 @@
 		SOUND_INFO info;
 	};
 
+	// TODO : Add defs for bitfields
+	#define TS_DEFBTNSND_COND_LEAVE 0
+	#define TS_DEFBTNSND_COND_ENTER 1
+	#define TS_DEFBTNSND_COND_PUSH 2
+	#define TS_DEFBTNSND_COND_RELEASE_INSIDE 3
+	#define TS_DEFBTNSND_COND_TOTAL 4
+	struct swf_tag_definebuttonsound
+	{
+		ui16 button_id;
+		swf_tag *button_tag;
+		
+		SOUND_INFO sounds[TS_DEFBTNSND_COND_TOTAL];
+	};
+
 #endif

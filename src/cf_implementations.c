@@ -67,6 +67,10 @@ err check_definetext_common(pdata *state, swf_tag *tag_data)
 	}
 	offset += M_ALIGN(ret.integer, 3)>>3;
 
+	if(offset < tag_data->size)
+	{
+		return push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff((tag_data->tag_data + offset), state->u_movie));
+	}
 	return 0;
 }
 
@@ -335,7 +339,7 @@ err check_definefontinfo(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT
 	offset += 3;
 	tag_struct->define_font_id = geti16((uchar *)base);
 
-	/* Uncomment after define font is properly implemented
+	/*TODO: Uncomment after define font is properly implemented
 
 	err_ptr ret_tag = id_get_tag(state, tag_struct->define_font_id);
 	if(ER_ERROR(ret_tag.ret))
@@ -359,7 +363,7 @@ err check_definefontinfo(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT
 	tag_struct->bitfields = base[offset];
 
 	tag_struct->font_info_map = base + offset + 1;
-	// TODO: Find and connect tag_struct->font_tag to the tag with id tag_struct->define_font_id, and do a bounds check with the "((tag_struct->bitfields & 1) + 1)" times "glyphs_count" value of that on tag_struct->font_info_map. Then check if that same size exceeds the tag_size and if so, push a peculiarity
+	// TODO:: do a bounds check with the "((tag_struct->bitfields & 1) + 1)" times "glyphs_count" value of that on tag_struct->font_info_map. Then check if that same size exceeds the tag_size and if so, push a peculiarity
 
 	return 0;
 }
@@ -411,16 +415,53 @@ err check_startsound(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT 
 	}
 
 	offset = M_ALIGN(ret.integer, 3)>>3;
-	// if(offset < tag_data->size) TODO
+	if(offset < tag_data->size)
+	{
+		return push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff((tag_data->tag_data + offset), state->u_movie));
+	}
 	return 0;
 }
 
-err check_definebuttonsound(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_definebuttonsound(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT FINISHED--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
+	}
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+	C_INIT_TAG(swf_tag_definebuttonsound);
+
+/* TODO: Uncomment this after check_definebutton is properly implemented with id registration
+	C_TAG_BOUNDS_EVAL(base, 2);
+	tag_struct->button_id = geti16(base);
+	err_ptr ret = id_get_tag(tag_struct->button_id);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+
+	tag_struct->font_tag = (swf_tag *)ret_tag.pointer;
+	if(tag_struct->font_tag->tag != T_DEFINEFONT)
+	{
+		C_RAISE_ERR(ESW_IMPROPER);
+	}
+	*/
+	offset = 2;
+	for (int i=0; i<TS_DEFBTNSND_COND_TOTAL; i++)
+	{
+		err_int ret = swf_sound_info_parse(state, (tag_struct->sounds) + i, base + offset, tag_data);
+		if(ER_ERROR(ret.ret))
+		{
+			return ret.ret;
+		}
+		offset += ret.integer>>3;
+	}
+
+	if(offset < tag_data->size)
+	{
+		return push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff((tag_data->tag_data + offset), state->u_movie));
 	}
 	return 0;
 }
