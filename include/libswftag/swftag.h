@@ -201,8 +201,9 @@
 #define PEC_RESERVE_TAMPERED 0x19 // Some reserved bit in some structure/substructure bitfield was tampered (usually only raised for where the reserved bit is specified a state, like if the spec says it's Always 1 or 0). Not thoroughly enforced yet. TODO
 #define PEC_WIDTH_TOO_BIG 0x1A // Width too big for specified field. Gets auto truncated
 #define PEC_UNCONVENTIONAL_SHORT_TAG 0x1B // Short tag used for a tag that is usually long tag exclusive
+#define PEC_COMPRESSION_TIME_TRAVEL 0x1C // Compression type not supported by swf version
 
-#define PEC_MAX 0x1B
+#define PEC_MAX 0x1C
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/

@@ -778,7 +778,7 @@ err check_buffer_validity(pdata *state, uchar *buffer, ui32 size)
 		case 'C':
 			if(state->version < VER_INTRO_DEFLATE)
 			{
-				ret_err = push_peculiarity(state, PEC_TIME_TRAVEL, 0);
+				ret_err = push_peculiarity(state, PEC_COMPRESSION_TIME_TRAVEL, 0);
 				if(ER_ERROR(ret_err))
 				{
 					return ret_err;
@@ -789,7 +789,7 @@ err check_buffer_validity(pdata *state, uchar *buffer, ui32 size)
 		case 'Z':
 			if(state->version < VER_INTRO_LZMA)
 			{
-				ret_err = push_peculiarity(state, PEC_TIME_TRAVEL, 0);
+				ret_err = push_peculiarity(state, PEC_COMPRESSION_TIME_TRAVEL, 0);
 				if(ER_ERROR(ret_err))
 				{
 					return ret_err;
@@ -831,7 +831,7 @@ err check_file_validity(pdata *state, FILE *swf)
 		case 'C':
 			if(state->version < VER_INTRO_DEFLATE)
 			{
-				ret_err = push_peculiarity(state, PEC_TIME_TRAVEL, 0); // TODO: Add a new peculiarity for this.
+				ret_err = push_peculiarity(state, PEC_COMPRESSION_TIME_TRAVEL, 0); // TODO: Add a new peculiarity for this.
 				if(ER_ERROR(ret_err))
 				{
 					return ret_err;
@@ -842,7 +842,7 @@ err check_file_validity(pdata *state, FILE *swf)
 		case 'Z':
 			if(state->version < VER_INTRO_LZMA)
 			{
-				ret_err = push_peculiarity(state, PEC_TIME_TRAVEL, 0);
+				ret_err = push_peculiarity(state, PEC_COMPRESSION_TIME_TRAVEL, 0);
 				if(ER_ERROR(ret_err))
 				{
 					return ret_err;
