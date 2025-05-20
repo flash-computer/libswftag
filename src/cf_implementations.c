@@ -404,7 +404,7 @@ err check_startsound(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT 
 	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
 	C_INIT_TAG(swf_tag_startsound);
-	err_int ret = swf_sound_info_parse(&(tag_struct->info), state, base, tag_data);
+	err_int ret = swf_sound_info_parse(state, &(tag_struct->info), base, tag_data);
 	if(ER_ERROR(ret.ret))
 	{
 		return ret.ret;
