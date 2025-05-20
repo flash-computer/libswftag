@@ -24,7 +24,77 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-err check_definetext_common(pdata *state, swf_tag *tag_data)
+err check_soundstreamhead_common(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT FINISHED--//
+{
+	err handler_ret;
+	if(!tag_data || !state)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+	C_INIT_TAG(swf_tag_soundstreamheadx);
+
+	tag_struct->family_version = 1;
+	if(tag_data->tag == T_SOUNDSTREAMHEAD2)
+	{
+		tag_struct->family_version = 2;
+	}
+
+	C_TAG_BOUNDS_EVAL(base, 4);
+
+	ui16 flags = geti16(base);
+	tag_struct->compression = (flags & 0xF000)>>12;
+	tag_struct->sound_rate = (flags & 0xC00)>>10;
+	tag_struct->playback_rate = (flags & 0xC)>>2;
+	tag_struct->bitfields = flags & 0x303;
+	tag_struct->sample_size = geti16(base+2);
+	ui8 format = tag_struct->compression;
+	if(!SND_FORMAT_VALID(format))
+	{
+		C_RAISE_ERR(ESW_IMPROPER);
+	}
+
+	if(tag_data->tag == T_SOUNDSTREAMHEAD && format > 1)
+	{
+		if(format == 2 && state->version < 4)
+		{
+			err ret = push_peculiarity(state, PEC_TIME_TRAVEL, uchar_safe_ptrdiff(base, state->u_movie));
+			if(ER_ERROR(ret))
+			{
+				return ret;
+			}
+		}
+		else if(format > 2)
+		{
+			C_RAISE_ERR(ESW_IMPROPER);
+		}
+	}
+	if((~(tag_struct->bitfields)) & (TS_SNDSTREAMHD_PB_SIZE | TS_SNDSTREAMHD_SO_SIZE) || (flags & 0xF0))
+	{
+		err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	offset = 4;
+	tag_struct->latency_seek = 0;
+	if(format == SND_FORMAT_MP3)
+	{
+		C_TAG_BOUNDS_EVAL(base, 6);
+		tag_struct->latency_seek = geti16(base+4);
+		offset += 2;
+	}
+
+	if(offset < tag_data->size)
+	{
+		return push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff((tag_data->tag_data + offset), state->u_movie));
+	}
+	return 0;
+}
+
+err check_definetext_common(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT FINISHED--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
@@ -301,7 +371,7 @@ err check_definefont(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET-
 	return 0;
 }
 
-err check_definetext(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISHED--//
+err check_definetext(pdata *state, swf_tag *tag_data) //--DELEGATED--//
 {
 	return check_definetext_common(state, tag_data);
 }
@@ -466,14 +536,9 @@ err check_definebuttonsound(pdata *state, swf_tag *tag_data) //--TODO: STARTED B
 	return 0;
 }
 
-err check_soundstreamhead(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_soundstreamhead(pdata *state, swf_tag *tag_data) //--DELEGATED--//
 {
-	err handler_ret;
-	if(!tag_data || !state)
-	{
-		C_RAISE_ERR(EFN_ARGS);
-	}
-	return 0;
+	return check_soundstreamhead_common(state, tag_data);
 }
 
 err check_soundstreamblock(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
@@ -608,7 +673,7 @@ err check_defineshape3(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YE
 	return 0;
 }
 
-err check_definetext2(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_definetext2(pdata *state, swf_tag *tag_data) //--DELEGATED--//
 {
 	return check_definetext_common(state, tag_data);
 }
@@ -713,14 +778,9 @@ err check_framelabel(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET-
 	return 0;
 }
 
-err check_soundstreamhead2(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_soundstreamhead2(pdata *state, swf_tag *tag_data) //--DELEGATED--//
 {
-	err handler_ret;
-	if(!tag_data || !state)
-	{
-		C_RAISE_ERR(EFN_ARGS);
-	}
-	return 0;
+	return check_soundstreamhead_common(state, tag_data);
 }
 
 err check_definemorphshape(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//

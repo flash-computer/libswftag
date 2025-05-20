@@ -107,7 +107,7 @@
 	{
 		// has_scale : 0x1
 		// has_rotate : 0x10
-		ui8 bitfields;
+		ui16 bitfields;
 
 		ui8 scale_bits;
 		uf16_16 scale_x;
@@ -127,7 +127,7 @@
 	{
 		// has_add  : 0x1
 		// has_mult  : 0x10
-		ui8 bitfields;
+		ui16 bitfields;
 		ui8 color_bits;
 
 		uf16_16 red_mult;
@@ -183,7 +183,7 @@
 		// has_color : 0x4
 		// has_move_x : 0x2
 		// has_move_y : 0x1
-		ui8 bitfields;
+		ui16 bitfields;
 
 		ui16 define_font_id;
 		swf_tag *font_tag;
@@ -226,7 +226,7 @@
 		RGBA default_color;
 		// Clamp : 0x1
 		// Preserve Alpha: 0x10
-		ui8 bitfields;
+		ui16 bitfields;
 	};
 	typedef struct swf_filter_convolution CONVOLUTION_FILTER;
 
@@ -246,7 +246,7 @@
 		// knock_out: 0x4
 		// composite_source: 0x10
 		// on_top: 0x40
-		ui8 bitfields;
+		ui16 bitfields;
 
 		ui8 passes;
 	};
@@ -286,7 +286,7 @@
 		// has_loops : 0x4
 		// has_out_point : 0x2
 		// has_in_point : 0x1
-		ui8 bitfields;
+		ui16 bitfields;
 
 		ui32 in_point;
 		ui32 out_point;
@@ -387,7 +387,7 @@
 		// Only for version 8+
 		// blend_mode : 0x1
 		// filter_list : 0x10
-		ui8 bitfields;
+		ui16 bitfields;
 
 		// square_test : 0x8
 		// down : 0x4
@@ -464,7 +464,7 @@
 		// italic : 0x4
 		// bold : 0x2
 		// wide: 0x1	; Must be 1 for font info 2 and font info 1 v6+
-		ui8 bitfields;
+		ui16 bitfields;
 		ui8 lang;
 
 		swf_tag *font_tag;
@@ -472,6 +472,12 @@
 		void *font_info_map;
 	};
 
+	#define SND_FORMAT_RAW 0x0
+	#define SND_FORMAT_ADPCM 0x1
+	#define SND_FORMAT_MP3 0x2
+	#define SND_FORMAT_RAW_LE 0x3
+	#define SND_FORMAT_NELLYMOSER 0x6
+	#define SND_FORMAT_VALID(format) ((!(((ui8)format) & 0x4) || (((ui8)format) & 0x6)) && (((ui8)format) < 7))
 	struct swf_tag_definesound
 	{
 		ui16 id;
@@ -480,7 +486,7 @@
 
 		// 16bit/compressed audio : 0x2
 		// stereo : 0x1
-		ui8 bitfields;
+		ui16 bitfields;
 
 		ui32 samples_count;
 		uchar *sound_data;
@@ -503,6 +509,22 @@
 		swf_tag *button_tag;
 		
 		SOUND_INFO sounds[TS_DEFBTNSND_COND_TOTAL];
+	};
+
+	#define TS_SNDSTREAMHD_SO_SNDSIZE 0x200
+	#define TS_SNDSTREAMHD_SO_STEREO 0x100
+	#define TS_SNDSTREAMHD_PB_SIZE 0x2
+	#define TS_SNDSTREAMHD_PB_STEREO 0x1
+	struct swf_tag_soundstreamheadx
+	{
+		ui8 family_version;
+		ui8 compression;
+		ui8 sound_rate;
+		ui8 playback_rate;
+		ui16 bitfields;
+
+		ui16 sample_size;
+		ui16 latency_seek;
 	};
 
 #endif
