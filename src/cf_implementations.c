@@ -499,6 +499,8 @@ err check_definebuttonsound(pdata *state, swf_tag *tag_data) //--TODO: STARTED B
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
+	// Temporary. TODO: Fix this.
+	return 0;
 	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
 	C_INIT_TAG(swf_tag_definebuttonsound);
