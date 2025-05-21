@@ -524,9 +524,14 @@ err_int swf_sound_info_parse(pdata *state, SOUND_INFO *soin, uchar *buf, swf_tag
 	ui32 limit = (tag->size - uchar_safe_ptrdiff(buf, tag->tag_data));
 	ui32 offset = 0;
 
-	C_BOUNDS_EVAL(buf, 3, state, limit, ESW_IMPROPER);
+	C_BOUNDS_EVAL(buf, 2, state, limit, ESW_IMPROPER);
 
 	soin->sound_id = geti16(buf);
+	if(tag->tag == T_DEFINEBUTTONSOUND && !(soin->sound_id))
+	{
+		return (err_int){2<<3, 0};
+	}
+	C_BOUNDS_EVAL(buf, 3, state, limit, ESW_IMPROPER);
 	err_ptr ret = id_get_tag(state, soin->sound_id);
 	if(ER_ERROR(ret.ret))
 	{

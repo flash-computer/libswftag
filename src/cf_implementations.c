@@ -55,7 +55,6 @@ err check_soundstreamhead_common(pdata *state, swf_tag *tag_data) //--TODO: STAR
 		C_RAISE_ERR(ESW_IMPROPER);
 	}
 
-	/*
 	if(tag_data->tag == T_SOUNDSTREAMHEAD && format > 1)
 	{
 		if(format == 2 && state->version < 4)
@@ -68,10 +67,13 @@ err check_soundstreamhead_common(pdata *state, swf_tag *tag_data) //--TODO: STAR
 		}
 		else if(format > 2)
 		{
-			C_RAISE_ERR(ESW_IMPROPER);
+			err ret = push_peculiarity(state, PEC_MISUSED_FAMILY_FEATURE, uchar_safe_ptrdiff(base, state->u_movie));
+			if(ER_ERROR(ret))
+			{
+				return ret;
+			}
 		}
 	}
-	*/
 	if((~(tag_struct->bitfields)) & (TS_SNDSTREAMHD_PB_SIZE | TS_SNDSTREAMHD_SO_SIZE) || (flags & 0xF0))
 	{
 		err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, uchar_safe_ptrdiff(base, state->u_movie));
@@ -501,8 +503,6 @@ err check_definebuttonsound(pdata *state, swf_tag *tag_data) //--TODO: STARTED B
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	// Temporary. TODO: Fix this.
-	return 0;
 	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
 	C_INIT_TAG(swf_tag_definebuttonsound);
