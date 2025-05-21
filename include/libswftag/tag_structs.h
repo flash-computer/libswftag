@@ -297,6 +297,27 @@
 	};
 	typedef struct swf_sound_info SOUND_INFO;
 
+	struct swf_colormapdata	// Filled after decompression
+	{
+		ui8 color_table_size;
+		RGBA *color_table;
+		uchar *indices; // Padded to the next 32 byte boundary
+	};
+	typedef struct swf_colormapdata COLORMAPDATA;
+
+	struct swf_bitmapdata
+	{
+		RGBA *pixel_map;
+	};
+	typedef struct swf_bitmapdata BITMAPDATA;
+
+	union swf_bitmap_any
+	{
+		COLORMAPDATA colormap;
+		BITMAPDATA bitmap;
+	};
+	typedef union swf_bitmap_any BITMAP_ANY;
+
 
 /*--------------------------- LIB STRUCTS ---------------------------*/
 /*---------------------------------|---------------------------------*/
@@ -511,6 +532,8 @@
 		SOUND_INFO sounds[TS_DEFBTNSND_COND_TOTAL];
 	};
 
+	#define TS_SNDSTREAMHD_LATENCY_SEEK_MISSING 0x80
+
 	#define TS_SNDSTREAMHD_SO_SIZE 0x200
 	#define TS_SNDSTREAMHD_SO_STEREO 0x100
 	#define TS_SNDSTREAMHD_PB_SIZE 0x2
@@ -525,6 +548,27 @@
 
 		ui16 sample_size;
 		ui16 latency_seek;
+	};
+
+	struct swf_tag_soundstreamblock
+	{
+		uchar *data;
+	};
+
+	#define TS_DEFBITSLSLX_FORMAT_COLORMAP 0x3;
+	#define TS_DEFBITSLSL_FORMAT_RGB15 0x4;
+	#define TS_DEFBITSLSL_FORMAT_RGB 0x5;
+	#define TS_DEFBITSLSL2_FORMAT_ARGB_1 0x4;
+	#define TS_DEFBITSLSL2_FORMAT_ARGB_2 0x5;
+	struct swf_tag_definebitslosslessx
+	{
+		ui8 family_version;
+		ui16 id;
+		ui8 format;
+		ui16 width;
+		ui16 height;
+
+		BITMAP_ANY bitmap;
 	};
 
 #endif

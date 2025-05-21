@@ -202,9 +202,10 @@
 #define PEC_WIDTH_TOO_BIG 0x1A // Width too big for specified field. Gets auto truncated
 #define PEC_UNCONVENTIONAL_SHORT_TAG 0x1B // Short tag used for a tag that is usually long tag exclusive
 #define PEC_COMPRESSION_TIME_TRAVEL 0x1C // Compression type not supported by swf version
-#define PEC_MISUSED_FAMILY_FEATURE 0x1D // A family member of a certain tag family uses a feature supported by some other family member, but not by itself
+#define PEC_MISUSED_FAMILY_FEATURE 0x1D // A family member of a certain tag family used a feature supported by some other family member, but not by itself
+#define PEC_MANDATORY_FIELD_SKIPPED 0x1E // A mandatory but relatively harmless to skip field is skipped
 
-#define PEC_MAX 0x1D
+#define PEC_MAX 0x1E
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/

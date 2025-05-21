@@ -527,6 +527,7 @@ err_int swf_sound_info_parse(pdata *state, SOUND_INFO *soin, uchar *buf, swf_tag
 	C_BOUNDS_EVAL(buf, 2, state, limit, ESW_IMPROPER);
 
 	soin->sound_id = geti16(buf);
+	soin->sound_tag = NULL;
 	if(tag->tag == T_DEFINEBUTTONSOUND && !(soin->sound_id))
 	{
 		return (err_int){2<<3, 0};
@@ -605,7 +606,7 @@ err_int swf_sound_info_parse(pdata *state, SOUND_INFO *soin, uchar *buf, swf_tag
 		}
 	}
 	return (err_int){offset<<3, 0};
-};
+}
 
 #undef C_BOUNDS_EVAL
 

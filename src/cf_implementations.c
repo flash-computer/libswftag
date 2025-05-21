@@ -15,7 +15,7 @@
 #define C_RAISE_ERR_INT(integer, error) ER_RAISE_ERROR_ERR_INT(handler_ret, integer, state, error)
 
 // These macros are not library features, they're here just to make implementation simpler within the check_functions
-#define C_TAG_BOUNDS_EVAL(buffer, offset) if(M_BUF_BOUNDS_CHECK(buffer, offset, state))return C_RAISE_ERR(ESW_SHORTFILE);if(((uchar *)buffer + offset) > ((uchar *)(tag_data->tag_data) + tag_data->size))return C_RAISE_ERR(ESW_IMPROPER);
+#define C_TAG_BOUNDS_EVAL(buffer, offset) if(M_BUF_BOUNDS_CHECK(buffer, offset, state)){C_RAISE_ERR(ESW_SHORTFILE)};if(((uchar *)buffer + offset) > ((uchar *)(tag_data->tag_data) + tag_data->size)){C_RAISE_ERR(ESW_IMPROPER)};
 
 // Yes it's horrible, but it's less horrible than other options imho
 #define C_INIT_TAG(newstruct) err_ptr tag_ret=alloc_push_freelist(state, sizeof(struct newstruct), tag_data->parent_node);if(ER_ERROR(tag_ret.ret))return tag_ret.ret;struct newstruct *tag_struct=tag_ret.pointer;tag_data->tag_struct=tag_struct
@@ -23,6 +23,43 @@
 /*----------------------------------------------------------Duplicated code----------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
+err check_definebitslossless_common(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT FINISHED--//
+{
+	err handler_ret;
+	if(!tag_data || !state)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+	C_INIT_TAG(swf_tag_definebitslosslessx);
+
+	tag_struct->family_version = 1;
+	if(tag_data->tag == T_DEFINEBITSLOSSLESS2)
+	{
+		tag_struct->family_version = 2;
+	}
+
+	C_TAG_BOUNDS_EVAL(base, 7);
+
+	tag_struct->id = geti16(base);
+	tag_struct->format = M_SANITIZE_BYTE(base[2]);
+	tag_struct->width = geti16(base + 3);
+	tag_struct->height = geti16(base + 5);
+	offset = 7;
+
+	if(ANALYZE_DEEP)
+	{
+		/*
+		TODO: Add bitmap decompression and parsing
+
+		For T_DEFINEBITSLOSSLESS: 3 = RGB Colormap, 4 = 15 bit RGB15 pre-padded to 16 bit, 5 = 32 bit XRGB (24 bit RGB pre-padded to 32 bit)
+		For T_DEFINEBITSLOSSLESS2: 3 = RGBA Colormap, 4 or 5 = 32 bit ARGB (RGBA with alpha channel moved to the front)
+		*/
+	}
+	return 0;
+}
 
 err check_soundstreamhead_common(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT FINISHED--//
 {
@@ -86,9 +123,17 @@ err check_soundstreamhead_common(pdata *state, swf_tag *tag_data) //--TODO: STAR
 	tag_struct->latency_seek = 0;
 	if(format == SND_FORMAT_MP3)
 	{
-		C_TAG_BOUNDS_EVAL(base, 6);
-		tag_struct->latency_seek = geti16(base+4);
-		offset += 2;
+		// Ugly hack. I'm not pleased with this but if the effect is relatively harmless, compatibility considerations rule supreme.
+		if(tag_data->size == 4)
+		{
+			return push_peculiarity(state, PEC_MANDATORY_FIELD_SKIPPED, offset + uchar_safe_ptrdiff(base, state->u_movie));
+		}
+		else
+		{
+			C_TAG_BOUNDS_EVAL(base, 6);
+			tag_struct->latency_seek = geti16(base+4);
+			offset += 2;
+		}
 	}
 
 	if(offset < tag_data->size)
@@ -545,24 +590,36 @@ err check_soundstreamhead(pdata *state, swf_tag *tag_data) //--DELEGATED--//
 	return check_soundstreamhead_common(state, tag_data);
 }
 
-err check_soundstreamblock(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_soundstreamblock(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISHED--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
+	}
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+	C_INIT_TAG(swf_tag_soundstreamblock);
+	tag_struct->data = tag_data->tag_data;
+	if(ANALYZE_DEEP)
+	{
+		// TODO: Analyze more
+	}
+	else
+	{
+		offset = tag_data->size;
+	}
+
+	if(offset < tag_data->size)
+	{
+		return push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff((tag_data->tag_data + offset), state->u_movie));
 	}
 	return 0;
 }
 
-err check_definebitslossless(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_definebitslossless(pdata *state, swf_tag *tag_data) //--DELEGATED--//
 {
-	err handler_ret;
-	if(!tag_data || !state)
-	{
-		C_RAISE_ERR(EFN_ARGS);
-	}
-	return 0;
+	return check_definebitslossless_common(state, tag_data);
 }
 
 err check_definebitsjpeg2(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
@@ -702,14 +759,9 @@ err check_definebitsjpeg3(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED
 	return 0;
 }
 
-err check_definebitslossless2(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_definebitslossless2(pdata *state, swf_tag *tag_data) //--DELEGATED--//
 {
-	err handler_ret;
-	if(!tag_data || !state)
-	{
-		C_RAISE_ERR(EFN_ARGS);
-	}
-	return 0;
+	return check_definebitslossless_common(state, tag_data);
 }
 
 err check_defineedittext(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
