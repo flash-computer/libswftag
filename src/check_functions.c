@@ -1,6 +1,6 @@
 #include<libswftag/swftag.h>
 #include<libswftag/error.h>
-#include<libswftag/check_functions.h>
+
 #include<libswftag/swfmath.h>
 #include<libswftag/decompression.h>
 

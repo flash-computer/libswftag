@@ -206,6 +206,9 @@ err init_parse_data(pdata *state)
 	state->tag_stream_end = NULL;
 	state->scope_stack = NULL;
 	state->n_tags = 0;
+	#if defined(EXTENDED_CALLBACKS)
+			state->callback_flags = 0;
+	#endif
 
 	for(ui16 i=0; i<0x100; i++)
 	{

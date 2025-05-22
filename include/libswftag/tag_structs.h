@@ -378,6 +378,10 @@
 		ui32 n_tags;	// Number of tags
 
 		swf_tag **id_list[256]; // 2D array of 1<<16 swf_tag pointers, Each 256 pointer subarray is dynamically allocated.
+
+		#if defined(EXTENDED_CALLBACKS)
+			ui32 callback_flags;
+		#endif
 	};
 	typedef struct parse_data pdata;
 
@@ -501,12 +505,21 @@
 		void *font_info_map;
 	};
 
+
+	// TODO: Needs more research in which format was introduced in which version
 	#define SND_FORMAT_RAW 0x0
 	#define SND_FORMAT_ADPCM 0x1
 	#define SND_FORMAT_MP3 0x2
 	#define SND_FORMAT_RAW_LE 0x3
-	#define SND_FORMAT_NELLYMOSER 0x6
-	#define SND_FORMAT_VALID(format) ((!(((ui8)format) & 0x4) || (((ui8)format) & 0x6)) && (((ui8)format) < 7))
+	#define SND_FORMAT_ASAO_16K 0x4
+	#define SND_FORMAT_ASAO_8K 0x5
+	#define SND_FORMAT_ASAO 0x6
+	#define SND_FORMAT_SPEEX 0xB
+	#define SND_FORMAT_VALID(format) (format < 7 || format == SND_FORMAT_SPEEX)
+
+	// I can feel the slowness just looking at this. Still, can't be worse than all the other macros the library uses
+	// Maybe change it to a table?
+	#define SND_FORMAT_VER_VALID(format, ver) ((!ver)? 0 : (format < 2)? 1 : (format < 4 && ver >= 4)? 1 : (format == 6 && ver >= 6)? 1 : ((format < 6 || format == 11)  && ver >= 10)? 1 : 0)
 	struct swf_tag_definesound
 	{
 		ui16 id;

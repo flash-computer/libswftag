@@ -1,6 +1,6 @@
 #include<libswftag/swftag.h>
 #include<libswftag/error.h>
-#include<libswftag/check_functions.h>
+
 #include<libswftag/swfmath.h>
 
 #define ANALYZE_DEEP 0	// Placeholder flag to set whether or not to analyze tags in depth. Anti-feature for security and thus disabled by default
@@ -102,31 +102,41 @@ err check_soundstreamhead_common(pdata *state, swf_tag *tag_data) //--TODO: STAR
 		C_RAISE_ERR(ESW_IMPROPER);
 	}
 
-	if(tag_data->tag == T_SOUNDSTREAMHEAD && format > 1)
+	ui8 ver = state->version;
+	if(!SND_FORMAT_VER_VALID(format, ver))
 	{
-		if(format == 2 && state->version < 4)
+		err ret = push_peculiarity(state, PEC_TIME_TRAVEL, uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
 		{
-			err ret = push_peculiarity(state, PEC_TIME_TRAVEL, uchar_safe_ptrdiff(base, state->u_movie));
-			if(ER_ERROR(ret))
-			{
-				return ret;
-			}
-		}
-		else if(format > 2)
-		{
-			err ret = push_peculiarity(state, PEC_MISUSED_FAMILY_FEATURE, uchar_safe_ptrdiff(base, state->u_movie));
-			if(ER_ERROR(ret))
-			{
-				return ret;
-			}
+			return ret;
 		}
 	}
-	if((~(tag_struct->bitfields)) & (TS_SNDSTREAMHD_PB_SIZE | TS_SNDSTREAMHD_SO_SIZE) || (flags & 0xF0))
+
+	if(tag_data->tag == T_SOUNDSTREAMHEAD && format > 2)
+	{
+		err ret = push_peculiarity(state, PEC_MISUSED_FAMILY_FEATURE, uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	if(flags & 0xF0)
 	{
 		err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, uchar_safe_ptrdiff(base, state->u_movie));
 		if(ER_ERROR(ret))
 		{
 			return ret;
+		}
+	}
+	if((~(tag_struct->bitfields)) & (TS_SNDSTREAMHD_PB_SIZE | TS_SNDSTREAMHD_SO_SIZE))
+	{
+		if(tag_struct->family_version == 1 || (((~(tag_struct->bitfields)) & TS_SNDSTREAMHD_SO_SIZE) && (format > 1 && format != 3)))
+		{
+			err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, uchar_safe_ptrdiff(base, state->u_movie));
+			if(ER_ERROR(ret))
+			{
+				return ret;
+			}
 		}
 	}
 	offset = 4;
@@ -1342,10 +1352,14 @@ static err (*tag_check[])(pdata *, swf_tag *) = {&check_end, &check_showframe, &
 err_ptr check_tag(pdata *state, swf_tag *tag)
 {
 	err handler_ret;
+
 	if(!tag || !state)
 	{
 		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
 	}
+
+	CB_CALL_PTR(state, CB_PRE_TAG_CHECK, NULL);
+
 	ui8 real_tag = tag_valid(tag->tag);
 	if(!real_tag)
 	{
@@ -1379,6 +1393,9 @@ err_ptr check_tag(pdata *state, swf_tag *tag)
 			return (err_ptr){NULL, ret_check};
 		}
 	}
+
+	CB_CALL_PTR(state, CB_POST_TAG_CHECK, NULL);
+
 	return (err_ptr){NULL, 0};
 }
 

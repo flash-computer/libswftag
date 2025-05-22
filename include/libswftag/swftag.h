@@ -133,6 +133,7 @@
 
 #include<stdint.h>
 #include<stddef.h>
+#include<stdio.h>
 
 #ifndef CUSTOM_TYPES
 	#define CUSTOM_TYPES
@@ -162,7 +163,6 @@
 
 		typedef unsigned char uchar;
 	#endif
-
 #endif
 
 #define S_FREE(ptr)	if(ptr)free(ptr);ptr=NULL;
@@ -179,6 +179,40 @@
 // And unsigned to ensure uniformity in case it's bigger. The arithmetic ops in swfmath.h will treat it as signed because that's what the swf format does, virtually anywhere
 #include"tag_structs.h"
 
+/*----------------------------------------------------Extended Callback Functions----------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
+#if defined(EXTENDED_CALLBACKS)
+		#include "callbacks_extended.h"
+		#define CB_CALL_BASE_TEMPLATE(pdata, callbackindex, value_to_return) {err internal_extended_cb_ret = callback_functions[(callbackindex % CB_N_CALLBACKS) & 0x1F](pdata); if(ER_ERROR(internal_extended_cb_ret))return value_to_return;}
+
+		#define CB_CALL_BASE(pdata, callbackindex) CB_CALL_BASE_TEMPLATE(pdata, callbackindex, internal_extended_cb_ret)
+		#define CB_CALL_BASE_INT(pdata, callbackindex, int_to_return) CB_CALL_BASE_TEMPLATE(pdata, callbackindex, (err_int){int_to_return, internal_extended_cb_ret})
+		#define CB_CALL_BASE_PTR(pdata, callbackindex, ptr_to_return) CB_CALL_BASE_TEMPLATE(pdata, callbackindex, (err_ptr){ptr_to_return, internal_extended_cb_ret})
+
+		#ifndef EXTENDED_CALLBACKS_TYPE
+			#define EXTENDED_CALLBACKS_TYPE 0
+		#endif
+
+		#if (EXTENDED_CALLBACKS_TYPE == 0)
+			// Mandatory extended callbacks
+			#define CB_CALL(pdata, callbackindex) CB_CALL_BASE(pdata, callbackindex)
+			#define CB_CALL_INT(pdata, callbackindex, int_to_return) CB_CALL_BASE_INT(pdata, callbackindex, int_to_return)
+			#define CB_CALL_PTR(pdata, callbackindex, ptr_to_return) CB_CALL_BASE_PTR(pdata, callbackindex, ptr_to_return)
+		#else
+			// Conditional extended callbacks
+			#define CB_CALL(pdata, callbackindex) {if(get_callback_flag(pdata, callbackindex))CB_CALL_BASE(pdata, callbackindex)}
+			#define CB_CALL_INT(pdata, callbackindex, int_to_return) {if(get_callback_flag(pdata, callbackindex))CB_CALL_BASE_INT(pdata, callbackindex, int_to_return)}
+			#define CB_CALL_PTR(pdata, callbackindex, ptr_to_return) {if(get_callback_flag(pdata, callbackindex))CB_CALL_BASE_PTR(pdata, callbackindex, ptr_to_return)}
+		#endif
+#else
+		// No extended callbacks
+		#define CB_CALL(pdata, callbackindex)
+		#define CB_CALL_INT(pdata, callbackindex, int_to_return)
+		#define CB_CALL_PTR(pdata, callbackindex, ptr_to_return)
+#endif
+
 /*-----------------------------------------------------------Peculiarities-----------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
@@ -192,7 +226,7 @@
 #define PEC_BITFIELD_PADDING 0x10	// Bitfield Padding isn't all 0s
 #define PEC_TAG_EXTRA 0x11	// Size of tag exceeds what it needs
 #define PEC_MYTHICAL_TAG 0x12	// Tags not defined by the standard. No proper implementation available for these and thus these tags only raise a peculiarity and pass the checks
-#define PEC_TIME_TRAVEL 0x13	// Tag used in a version where it wasn't introduced yet
+#define PEC_TIME_TRAVEL 0x13	// Feature or Tag used in a version where it wasn't introduced yet
 #define PEC_FILESIZE_SMALL 0x14	// File size smaller than reported
 #define PEC_INVAL_TAG 0x15	// Invalid tag encountered
 #define PEC_ENDLESS 0x16 // File does not terminate with a T_END tag
@@ -243,3 +277,19 @@ err pop_scope(pdata *state);
 
 err_ptr alloc_push_freelist(pdata *state, size_t size, dnode *node);
 err free_freelist(pdata *state, dnode *to_free);
+
+err_ptr get_tag(pdata *state, uchar *buffer);
+err_ptr check_tag(pdata *state, swf_tag *tag);
+err_ptr spawn_tag(pdata *state, int tag, ui32 size, uchar *tag_data);
+
+err_int swf_rect_parse(pdata *state, RECT *rect, uchar *buf, swf_tag *tag);
+err_int swf_matrix_parse(pdata *state, MATRIX *mat, uchar *buf, swf_tag *tag);
+err_int swf_color_transform_parse(pdata *state, COLOR_TRANSFORM *colt, uchar *buf, swf_tag *tag);
+err_int swf_text_record_parse(pdata *state, TEXT_RECORD *trec, uchar *buf, swf_tag *tag);
+err_int swf_sound_info_parse(pdata *state, SOUND_INFO *soin, uchar *buf, swf_tag *tag);
+
+err_int swf_text_record_list_parse(pdata *state, uchar *buf, swf_tag *tag);
+
+err file_header_verification(pdata *state);
+err check_tag_stream(pdata *state);
+err check_file_validity(pdata *state, FILE *swf);
