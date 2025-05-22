@@ -204,8 +204,10 @@
 #define PEC_COMPRESSION_TIME_TRAVEL 0x1C // Compression type not supported by swf version
 #define PEC_MISUSED_FAMILY_FEATURE 0x1D // A family member of a certain tag family used a feature supported by some other family member, but not by itself
 #define PEC_MANDATORY_FIELD_SKIPPED 0x1E // A mandatory but relatively harmless to skip field is skipped
+#define PEC_UNTERMINATED_STRING 0x1F // String is not null terminated
+#define PEC_MD5_HASH_INVALID 0x20 // MD5 Hash is invalid
 
-#define PEC_MAX 0x1E
+#define PEC_MAX 0x20
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/

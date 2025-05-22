@@ -318,6 +318,14 @@
 	};
 	typedef union swf_bitmap_any BITMAP_ANY;
 
+	struct swf_md5_hash
+	{
+		uchar *string;
+		ui32 salt_offset;
+		ui32 pass_offset;
+	};
+	typedef struct swf_md5_hash MD5_HASH;
+
 
 /*--------------------------- LIB STRUCTS ---------------------------*/
 /*---------------------------------|---------------------------------*/
@@ -569,6 +577,11 @@
 		ui16 height;
 
 		BITMAP_ANY bitmap;
+	};
+
+	struct swf_tag_protect
+	{
+		MD5_HASH hash;
 	};
 
 #endif

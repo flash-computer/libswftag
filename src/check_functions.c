@@ -16,8 +16,6 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-static err (*tag_check[])(pdata *, swf_tag *) = {&check_end, &check_showframe, &check_defineshape, &check_freecharacter, &check_placeobject, &check_removeobject, &check_definebitsjpeg, &check_definebutton, &check_jpegtables, &check_setbackgroundcolor, &check_definefont, &check_definetext, &check_doaction, &check_definefontinfo, &check_definesound, &check_startsound, &check_invalidtag, &check_definebuttonsound, &check_soundstreamhead, &check_soundstreamblock, &check_definebitslossless, &check_definebitsjpeg2, &check_defineshape2, &check_definebuttoncxform, &check_protect, &check_pathsarepostscript, &check_placeobject2, &check_invalidtag, &check_removeobject2, &check_syncframe, &check_invalidtag, &check_freeall, &check_defineshape3, &check_definetext2, &check_definebutton2, &check_definebitsjpeg3, &check_definebitslossless2, &check_defineedittext, &check_definevideo, &check_definesprite, &check_namecharacter, &check_productinfo, &check_definetextformat, &check_framelabel, &check_invalidtag, &check_soundstreamhead2, &check_definemorphshape, &check_generateframe, &check_definefont2, &check_generatorcommand, &check_definecommandobject, &check_characterset, &check_externalfont, &check_invalidtag, &check_invalidtag, &check_invalidtag, &check_export, &check_import, &check_enabledebugger, &check_doinitaction, &check_definevideostream, &check_videoframe, &check_definefontinfo2, &check_debugid, &check_enabledebugger2, &check_scriptlimits, &check_settabindex, &check_invalidtag, &check_invalidtag, &check_fileattributes, &check_placeobject3, &check_import2, &check_doabcdefine, &check_definefontalignzones, &check_csmtextsettings, &check_definefont3, &check_symbolclass, &check_metadata, &check_definescalinggrid, &check_invalidtag, &check_invalidtag, &check_invalidtag, &check_doabc, &check_defineshape4, &check_definemorphshape2, &check_invalidtag, &check_definesceneandframedata, &check_definebinarydata, &check_definefontname, &check_invalidtag, &check_definebitsjpeg4, &check_definefont4, &check_invalidtag, &check_enabletelemetry};
-
 /*-------------------------------------------------------------Functions-------------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
@@ -56,51 +54,6 @@ err_ptr get_tag(pdata *state, uchar *buffer)
 		}
 	}
 	return (err_ptr){tag, 0};
-}
-
-// This is the biggest part of the project and thus the one I'd need the most help with.
-// Evaluation would have to be conditional with the version outlined in the pdata structure. All of the prototypes above would have to be fleshed out.
-// The struct that the pointer returns hasn't been made yet but it would be diagnostic struct outlining exactly what is wrong in case of an error.
-err_ptr check_tag(pdata *state, swf_tag *tag)
-{
-	if(!tag || !state)
-	{
-		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
-	}
-	ui8 real_tag = tag_valid(tag->tag);
-	if(!real_tag)
-	{
-		err handler_ret = push_peculiarity(state, PEC_INVAL_TAG, tag->tag_data - state->u_movie);	// You can terminate at invalid tags in the callback here if you so wish
-		if(ER_ERROR(handler_ret))
-		{
-			return (err_ptr){NULL, handler_ret};
-		}
-	}
-	else
-	{
-		if(!tag_version_compare(state, tag->tag))
-		{
-			err handler_ret = push_peculiarity(state, PEC_TIME_TRAVEL, tag->tag_data - state->u_movie);
-			if(ER_ERROR(handler_ret))
-			{
-				return (err_ptr){NULL, handler_ret};
-			}
-		}
-	}
-	// Check function calls and the rest of the stuff will go here
-	if(M_BUF_BOUNDS_CHECK(tag->tag_data, tag->size, state))
-	{
-		C_RAISE_ERR_PTR(tag, ESW_SHORTFILE);
-	}
-	if(real_tag)
-	{
-		err ret_check = tag_check[tag->tag](state, tag);
-		if(ER_ERROR(ret_check))
-		{
-			return (err_ptr){NULL, ret_check};
-		}
-	}
-	return (err_ptr){NULL, 0};
 }
 
 // Generates a generic tag. Use with push_tag to add it to the tag stream
@@ -467,6 +420,7 @@ err_int swf_text_record_list_parse(pdata *state, uchar *buf, swf_tag *tag)
 		ui8 checknull = M_SANITIZE_BYTE(buf[offset]);
 		if(!checknull)
 		{
+			offset++;
 			break;
 		}
 

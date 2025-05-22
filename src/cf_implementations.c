@@ -58,6 +58,16 @@ err check_definebitslossless_common(pdata *state, swf_tag *tag_data) //--TODO: S
 		For T_DEFINEBITSLOSSLESS2: 3 = RGBA Colormap, 4 or 5 = 32 bit ARGB (RGBA with alpha channel moved to the front)
 		*/
 	}
+	else
+	{
+		C_TAG_BOUNDS_EVAL(base, tag_data->size);
+		offset = tag_data->size;
+	}
+
+	if(offset < tag_data->size)
+	{
+		return push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff((tag_data->tag_data + offset), state->u_movie));
+	}
 	return 0;
 }
 
@@ -370,7 +380,7 @@ err check_definebutton(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT N
 	ui32 offset = 0;
 	C_TAG_BOUNDS_EVAL(base, 2);
 
-	ui16 id = geti16((uchar *)base);
+	// ui16 id = geti16((uchar *)base);
 	offset += 2;
 
 	// TODO: A lot, starting with defining it properly in tag_structs. The chain for it is a little big so I'm saving it for later
@@ -507,13 +517,21 @@ err check_definesound(pdata *state, swf_tag *tag_data) //--TODO: STARTED BUT NOT
 
 	tag_struct->samples_count = geti32(base+3);
 
-	if(!ANALYZE_DEEP)
+	if(ANALYZE_DEEP)
+	{
+		// Thorough checks will go here.
+	}
+	else
 	{
 		C_TAG_BOUNDS_EVAL(base, tag_data->size);
-		return 0;
+		offset = tag_data->size;
 	}
 
-	// Thorough checks will go here.
+	if(offset < tag_data->size)
+	{
+		return push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff((tag_data->tag_data + offset), state->u_movie));
+	}
+
 	return 0;
 }
 
@@ -600,7 +618,7 @@ err check_soundstreamblock(pdata *state, swf_tag *tag_data) //--TODO: STARTED, B
 	uchar *base = tag_data->tag_data;
 	ui32 offset = 0;
 	C_INIT_TAG(swf_tag_soundstreamblock);
-	tag_struct->data = tag_data->tag_data;
+	tag_struct->data = base;
 	if(ANALYZE_DEEP)
 	{
 		// TODO: Analyze more
@@ -652,12 +670,108 @@ err check_definebuttoncxform(pdata *state, swf_tag *tag_data) //--TODO: NOT STAR
 	return 0;
 }
 
-err check_protect(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_protect(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISHED--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
+	}
+	C_INIT_TAG(swf_tag_protect);
+
+	tag_struct->hash.string = NULL;
+	tag_struct->hash.salt_offset = 0;
+	tag_struct->hash.pass_offset = 0;
+	if(!(tag_data->size))
+	{
+		return 0;
+	}
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+
+	C_TAG_BOUNDS_EVAL(base, 5);
+
+	if(geti16(base))
+	{
+		err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+
+	tag_struct->hash.string = base+2;
+	uchar *hash = base + 2;
+
+	if(M_SANITIZE_BYTE(base[2]) != '$' || M_SANITIZE_BYTE(base[3]) != '1' || M_SANITIZE_BYTE(base[4]) != '$')
+	{
+		err ret = push_peculiarity(state, PEC_MD5_HASH_INVALID, 2 + uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	offset = 5;
+
+	tag_struct->hash.salt_offset = 3;
+	ui32 itr = 3;
+	ui32 nullpos = 0;
+	ui32 passpos = 0;
+
+	while(itr < ((tag_data->size) - 2))
+	{
+		if(!hash[itr])
+		{
+			nullpos = itr;
+			break;
+		}
+		if(hash[itr] == '$')
+		{
+			if(itr + 1 < ((tag_data->size) - 2))
+			{
+				itr++;
+				tag_struct->hash.pass_offset = passpos = itr;
+			}
+		}
+		itr++;
+	}
+	offset += itr-3;
+	// Remember to always check before using these values, the salt_offset and pass_offset may be empty. The pass_offset may actually point to a single byte, unterminated at the end.
+	// It's not handled explicitly because it falls under the PEC_UNTERMINATED_STRING peculiarity.
+	// There does not seem to be any strict requirements on the length of the salt
+	if(!(passpos))
+	{
+		err ret = push_peculiarity(state, PEC_MD5_HASH_INVALID, 5 + uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	if(!nullpos)
+	{
+		// Ideally, you should use alloc_push_freelist to allocate a buffer the size of the string + 1 and the memcpy the string into it and terminate it with a '\0' if you want to let this peculiarity pass by.
+		err ret = push_peculiarity(state, PEC_UNTERMINATED_STRING, 2 + uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	else
+	{
+
+	}
+	if((((nullpos)? nullpos : ((tag_data->size) - 2)) - passpos) != 22)
+	{
+		err ret = push_peculiarity(state, PEC_MD5_HASH_INVALID, 2 + passpos + uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+
+	if(offset < tag_data->size)
+	{
+		return push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff((tag_data->tag_data + offset), state->u_movie));
 	}
 	return 0;
 }
@@ -1207,6 +1321,65 @@ err check_enabletelemetry(pdata *state, swf_tag *tag_data)  //--TODO: NOT STARTE
 		C_RAISE_ERR(EFN_ARGS);
 	}
 	return 0;
+}
+
+/*------------------------------------------------------------Static Data------------------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
+#define check_stopsound(state, tag) check_startsound(state, tag)
+
+// Consider changing the "delegated" checking functions to a define that directly points to the common parsing function, like with this check_stopsound def
+static err (*tag_check[])(pdata *, swf_tag *) = {&check_end, &check_showframe, &check_defineshape, &check_freecharacter, &check_placeobject, &check_removeobject, &check_definebitsjpeg, &check_definebutton, &check_jpegtables, &check_setbackgroundcolor, &check_definefont, &check_definetext, &check_doaction, &check_definefontinfo, &check_definesound, &check_startsound, &check_invalidtag, &check_definebuttonsound, &check_soundstreamhead, &check_soundstreamblock, &check_definebitslossless, &check_definebitsjpeg2, &check_defineshape2, &check_definebuttoncxform, &check_protect, &check_pathsarepostscript, &check_placeobject2, &check_invalidtag, &check_removeobject2, &check_syncframe, &check_invalidtag, &check_freeall, &check_defineshape3, &check_definetext2, &check_definebutton2, &check_definebitsjpeg3, &check_definebitslossless2, &check_defineedittext, &check_definevideo, &check_definesprite, &check_namecharacter, &check_productinfo, &check_definetextformat, &check_framelabel, &check_invalidtag, &check_soundstreamhead2, &check_definemorphshape, &check_generateframe, &check_definefont2, &check_generatorcommand, &check_definecommandobject, &check_characterset, &check_externalfont, &check_invalidtag, &check_invalidtag, &check_invalidtag, &check_export, &check_import, &check_enabledebugger, &check_doinitaction, &check_definevideostream, &check_videoframe, &check_definefontinfo2, &check_debugid, &check_enabledebugger2, &check_scriptlimits, &check_settabindex, &check_invalidtag, &check_invalidtag, &check_fileattributes, &check_placeobject3, &check_import2, &check_doabcdefine, &check_definefontalignzones, &check_csmtextsettings, &check_definefont3, &check_symbolclass, &check_metadata, &check_definescalinggrid, &check_invalidtag, &check_invalidtag, &check_invalidtag, &check_doabc, &check_defineshape4, &check_definemorphshape2, &check_invalidtag, &check_definesceneandframedata, &check_definebinarydata, &check_definefontname, &check_invalidtag, &check_definebitsjpeg4, &check_definefont4, &check_invalidtag, &check_enabletelemetry};
+
+/*------------------------------------------------------------Upper Level------------------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------|-----------------------------------------------------------------*/
+
+// This is the biggest part of the project and thus the one I'd need the most help with.
+// Evaluation would have to be conditional with the version outlined in the pdata structure. All of the prototypes above would have to be fleshed out.
+// The struct that the pointer returns hasn't been made yet but it would be diagnostic struct outlining exactly what is wrong in case of an error.
+err_ptr check_tag(pdata *state, swf_tag *tag)
+{
+	err handler_ret;
+	if(!tag || !state)
+	{
+		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
+	}
+	ui8 real_tag = tag_valid(tag->tag);
+	if(!real_tag)
+	{
+		handler_ret = push_peculiarity(state, PEC_INVAL_TAG, tag->tag_data - state->u_movie);	// You can terminate at invalid tags in the callback here if you so wish
+		if(ER_ERROR(handler_ret))
+		{
+			return (err_ptr){NULL, handler_ret};
+		}
+	}
+	else
+	{
+		if(!tag_version_compare(state, tag->tag))
+		{
+			handler_ret = push_peculiarity(state, PEC_TIME_TRAVEL, tag->tag_data - state->u_movie);
+			if(ER_ERROR(handler_ret))
+			{
+				return (err_ptr){NULL, handler_ret};
+			}
+		}
+	}
+	// Check function calls and the rest of the stuff will go here
+	if(M_BUF_BOUNDS_CHECK(tag->tag_data, tag->size, state))
+	{
+		C_RAISE_ERR_PTR(tag, ESW_SHORTFILE);
+	}
+	if(real_tag)
+	{
+		err ret_check = tag_check[tag->tag](state, tag);
+		if(ER_ERROR(ret_check))
+		{
+			return (err_ptr){NULL, ret_check};
+		}
+	}
+	return (err_ptr){NULL, 0};
 }
 
 #undef C_INIT_TAG
