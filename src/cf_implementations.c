@@ -219,7 +219,7 @@ err check_definetext_common(pdata *state, swf_tag *tag_data) //--TODO: STARTED B
 
 err check_invalidtag(pdata *state, swf_tag *tag_data)
 {
-	return push_peculiarity(state, PEC_INVAL_TAG, tag_data->tag_data - state->u_movie);
+	return push_peculiarity(state, PEC_INVAL_TAG, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 }
 
 err check_end(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISHED--//
@@ -232,7 +232,7 @@ err check_end(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISH
 
 	if(tag_data->size)
 	{
-		err ret = push_peculiarity(state, PEC_TAG_EXTRA, tag_data->tag_data - state->u_movie);
+		err ret = push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 		if(ER_ERROR(ret))
 		{
 			return ret;
@@ -252,7 +252,7 @@ err check_showframe(pdata *state, swf_tag *tag_data) //--DONE--//
 
 	if(tag_data->size)
 	{
-		err ret = push_peculiarity(state, PEC_TAG_EXTRA, tag_data->tag_data - state->u_movie);
+		err ret = push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 		if(ER_ERROR(ret))
 		{
 			return ret;
@@ -279,7 +279,7 @@ err check_freecharacter(pdata *state, swf_tag *tag_data) //--DONE--//
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	return push_peculiarity(state, PEC_MYTHICAL_TAG, tag_data->tag_data - state->u_movie);
+	return push_peculiarity(state, PEC_MYTHICAL_TAG, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 }
 
 err check_placeobject(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISHED--//
@@ -786,14 +786,14 @@ err check_protect(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FI
 	return 0;
 }
 
-err check_pathsarepostscript(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_pathsarepostscript(pdata *state, swf_tag *tag_data) //--DONE--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	return 0;
+	return push_peculiarity(state, PEC_MYTHICAL_TAG, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 }
 
 err check_placeobject2(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FINISHED--//
@@ -828,24 +828,24 @@ err check_removeobject2(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED Y
 	return 0;
 }
 
-err check_syncframe(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_syncframe(pdata *state, swf_tag *tag_data) //--DONE--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	return 0;
+	return push_peculiarity(state, PEC_MYTHICAL_TAG, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 }
 
-err check_freeall(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_freeall(pdata *state, swf_tag *tag_data) //--DONE--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	return 0;
+	return push_peculiarity(state, PEC_MYTHICAL_TAG, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 }
 
 err check_defineshape3(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
@@ -938,14 +938,14 @@ err check_productinfo(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET
 	return 0;
 }
 
-err check_definetextformat(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_definetextformat(pdata *state, swf_tag *tag_data) //--DONE--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	return 0;
+	return push_peculiarity(state, PEC_MYTHICAL_TAG, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 }
 
 err check_framelabel(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
@@ -1003,24 +1003,24 @@ err check_generatorcommand(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTE
 	return 0;
 }
 
-err check_definecommandobject(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_definecommandobject(pdata *state, swf_tag *tag_data) //--DONE--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	return 0;
+	return push_peculiarity(state, PEC_MYTHICAL_TAG, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 }
 
-err check_characterset(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
+err check_characterset(pdata *state, swf_tag *tag_data) //--DONE--//
 {
 	err handler_ret;
 	if(!tag_data || !state)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	return 0;
+	return push_peculiarity(state, PEC_MYTHICAL_TAG, uchar_safe_ptrdiff(tag_data->tag_data, state->u_movie));
 }
 
 err check_externalfont(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//

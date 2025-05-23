@@ -4,6 +4,15 @@
 #include<stdlib.h>
 
 #include<zlib.h>
+#include<lzma.h>
+
+struct swf_lzma_header
+{
+	ui8 properties;
+	ui32 dictionary_size;
+	ui32 uncompressed_size[2];
+};
+typedef struct swf_lzma_header LZMA_HEADER;
 
 /*
 To implement:
@@ -99,6 +108,10 @@ err movie_buffer_deflate(pdata *state, uchar *buffer, ui32 size)
 
 err movie_file_deflate(pdata *state, FILE *swf)
 {
+	if(!state || !swf)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
 	uchar *uncomp = malloc(state->reported_movie_size);
 	if (!uncomp)
 	{
@@ -128,7 +141,7 @@ err movie_file_deflate(pdata *state, FILE *swf)
 	if (inflateInit(&zs) != Z_OK)
 	{
 		free(uncomp);
-		return EMM_ALLOC;
+		C_RAISE_ERR(EMM_ALLOC);
 	}
 
 	int zret = 0;
@@ -230,7 +243,7 @@ end:
 		else if (data_remaining && !zs.avail_out)
 		{
 			// header size too short
-			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);	// TODO: May need it's own peculiarity
+			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, 0);	// TODO: May need it's own peculiarity
 			if(ER_ERROR(ret))
 			{
 				return ret;
@@ -264,6 +277,7 @@ end:
 	return 0;
 }
 
+
 err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 {
 	C_RAISE_ERR(EFN_NIB_HI);
@@ -272,7 +286,138 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 
 err movie_file_lzma(pdata *state, FILE *swf)
 {
-	C_RAISE_ERR(EFN_NIB_HI);
+	if(!state || !swf)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+
+	state->u_movie = (uchar *)malloc(state->reported_movie_size);
+	if(!(state->u_movie))
+	{
+		C_RAISE_ERR(EMM_ALLOC);
+	}
+
+	state->movie_size = state->reported_movie_size;
+	uchar headerbuf[13];
+
+	uchar readbuf[0x10000];
+	ui32 read_so_far = 0;
+
+	lzma_stream lzstr = LZMA_STREAM_INIT;
+	lzstr.next_out = state->u_movie;
+	lzstr.avail_out = state->movie_size;
+
+	lzstr.next_in = readbuf;
+	lzstr.avail_in = 0;
+
+	LZMA_HEADER lzheader;
+
+	// Is SIZE_MAX the right choice here?
+	lzma_ret lzret = lzma_alone_decoder(&lzstr, SIZE_MAX);
+	if(lzret != LZMA_OK)
+	{
+		C_RAISE_ERR(EFN_DECOMP);
+	}
+
+	lzma_action lzact = LZMA_RUN;
+	ui8 header_read = 0;
+
+	while(1)
+	{
+		size_t readSize;
+		if(!header_read)
+		{
+			readSize = fread(readbuf, 1, 9, swf);
+			if(readSize < 9)
+			{
+				C_RAISE_ERR(EFN_DECOMP);
+			}
+			for(size_t i=0; i<5; i++)
+			{
+				headerbuf[i] = readbuf[i+4];
+			}
+			seti32(headerbuf+5, state->movie_size);
+			seti32(headerbuf+9, 0);
+
+			readSize = 13;
+
+			lzheader.properties = M_SANITIZE_BYTE(readbuf[0]);
+			lzheader.dictionary_size = geti32(readbuf+1);
+			lzheader.uncompressed_size[0] = geti32(readbuf+5);
+			lzheader.uncompressed_size[1] = geti32(readbuf+9);
+
+			lzstr.next_in = headerbuf;
+			lzstr.avail_in = 13;
+
+			header_read = 1;
+		}
+		else
+		{
+			readSize = fread(readbuf, 1, sizeof(readbuf), swf);
+			if(!readSize)
+			{
+				if(feof(swf))
+				{
+					break;
+				}
+				C_RAISE_ERR(EFL_READ);
+			}
+
+			lzstr.next_in = readbuf;
+			lzstr.avail_in = readSize;
+		}
+
+		lzret = lzma_code(&lzstr, lzact);
+
+		if(lzstr.avail_out == 0)
+		{
+			if(lzret == LZMA_STREAM_END && lzstr.avail_in == 0)
+			{
+				uchar testbuf[1];
+				ui8 test = fread(testbuf, 1, 1, swf);
+				if(!feof(swf))
+				{
+					err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
+					if(ER_ERROR(ret))
+					{
+						return ret;
+					}
+				}
+			}
+			else
+			{
+				err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
+				if(ER_ERROR(ret))
+				{
+					return ret;
+				}
+			}
+			break;
+		}
+		else if(lzret == LZMA_STREAM_END)
+		{
+			state->movie_size = uchar_safe_ptrdiff(lzstr.next_out, state->u_movie);
+			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
+			if(ER_ERROR(ret))
+			{
+				return ret;
+			}
+			break;
+		}
+
+		if(lzret != LZMA_OK)
+		{
+			switch(lzret)
+			{
+				case LZMA_MEM_ERROR:
+					C_RAISE_ERR(EMM_ALLOC);
+					break;
+				default:
+					C_RAISE_ERR(EFN_DECOMP);
+					break;
+			}
+		}
+	}
 	return 0;
 }
 

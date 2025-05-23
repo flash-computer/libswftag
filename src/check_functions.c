@@ -597,6 +597,8 @@ err file_header_verification(pdata *state)
 
 	FILEHEADER *header = &(state->header);
 
+	CB_CALL(state, CB_PRE_TAG_CHECK);
+
 	err_int ret = swf_rect_parse(state, &(header->movie_rect), (uchar *)state->u_movie, tag);
 	if(ER_ERROR(ret.ret))
 	{
@@ -617,6 +619,8 @@ err file_header_verification(pdata *state)
 	tag->tag_and_size = (tag->tag_and_size & 0xFFC0) | ((tag->size < 0x3F)? tag->size : 0x3F);
 
 	state->tag_buffer = state->u_movie + tag->size;
+
+	CB_CALL(state, CB_POST_TAG_CHECK);
 
 	return 0;
 }

@@ -27,6 +27,23 @@ uf8_8 getuf8_8(uchar *inp)
 	return (uf8_8){M_SANITIZE_BYTE((ui8)inp[1]), M_SANITIZE_BYTE((ui8)inp[0])};
 }
 
+void seti32(uchar *loc, ui32 inp)
+{
+	for(int i=0; i<4; i++)
+	{
+		loc[i] = inp & 0xFF;
+		inp >>= 8;
+	}
+	return;
+}
+
+void seti16(uchar *loc, ui16 inp)
+{
+	loc[0] = inp & 0xFF;
+	loc[1] = (inp>>8) & 0xFF;
+	return;
+}
+
 int signed_comparei32(ui32 comparand_a, ui32 comparand_b)
 {
 	ui32 sign_mask = ((ui32)1)<<31;

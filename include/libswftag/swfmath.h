@@ -67,6 +67,9 @@ ui16 geti16(uchar *inp);
 uf16_16 getuf16_16(uchar *inp);
 uf8_8 getuf8_8(uchar *inp);
 
+void seti32(uchar *loc, ui32 inp);
+void seti16(uchar *loc, ui16 inp);
+
 int signed_comparei32(ui32 comparand_a, ui32 comparand_b);
 
 ui32 get_bitfield(uchar *buffer, ui32 base, ui8 offset);

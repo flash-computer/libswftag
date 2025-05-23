@@ -22,6 +22,8 @@
 
 #define EFN_NIB_HI	0x60  // Program execution errors
 #define EFN_ARGS  (0x1 | EFN_NIB_HI)	// Malformed Arguments
+#define EFN_DECOMP (0x2 | EFN_NIB_HI)	// Decompression error
+#define EFN_COMP (0x3 | EFN_NIB_HI)	// Compression error
 
 #define EFL_NIB_HI	0x40	// File Handling Errors
 #define EFL_OPEN	(0x1 | EFL_NIB_HI)
