@@ -240,8 +240,10 @@
 #define PEC_MANDATORY_FIELD_SKIPPED 0x1E // A mandatory but relatively harmless to skip field is skipped
 #define PEC_UNTERMINATED_STRING 0x1F // String is not null terminated
 #define PEC_MD5_HASH_INVALID 0x20 // MD5 Hash is invalid
+#define PEC_FILEATTR_MISSING 0x21 // T_FILEATTRIBUTES tag missing from the beginning of tagstream on swf 8+
+#define PEC_FILEATTR_MISPLACED 0x22 // T_FILEATTRIBUTES tag is present elsewhere in the file, and not at the beginning of the tag stream
 
-#define PEC_MAX 0x20
+#define PEC_MAX 0x22
 
 /*--------------------------------------------------------Function prototypes--------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/

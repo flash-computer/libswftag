@@ -327,63 +327,6 @@
 	typedef struct swf_md5_hash MD5_HASH;
 
 
-/*--------------------------- LIB STRUCTS ---------------------------*/
-/*---------------------------------|---------------------------------*/
-
-	struct parse_peculiarity
-	{
-		ui16 pattern;
-		size_t offset;
-	};
-	typedef struct parse_peculiarity peculiar;
-
-	// FileHeader pseudo-tag and DefineSprite are the only tags for which a new swf_scope opens. END tags close the scope
-	struct swf_pseudotag_fileheader
-	{
-		RECT movie_rect;
-		// 8.8 fixed point
-		uf8_8 movie_fr;
-		ui16 movie_frame_count;
-	};
-	typedef struct swf_pseudotag_fileheader FILEHEADER;
-
-	#define PDATA_FLAG_MOVIE_ALLOC 0x1
-
-	struct parse_data
-	{
-		ui8 mgmt_flags;
-
-		ui8 compression;
-		ui8 version;
-		ui32 movie_size;
-		uchar signature[8];
-		uchar *u_movie;	// Uncompressed movie data
-
-		ui32 reported_movie_size;
-
-		ui8 avm1;
-		ui8 avm2;
-
-		FILEHEADER header;
-
-		dnode *pec_list;	// List of parsing peculiarities that are not necessarily errors
-		dnode *pec_list_end;
-
-		uchar *tag_buffer;
-		dnode *tag_stream;
-		dnode *tag_stream_end;
-
-		dnode *scope_stack;
-
-		ui32 n_tags;	// Number of tags
-
-		swf_tag **id_list[256]; // 2D array of 1<<16 swf_tag pointers, Each 256 pointer subarray is dynamically allocated.
-
-		#if defined(EXTENDED_CALLBACKS)
-			ui32 callback_flags;
-		#endif
-	};
-	typedef struct parse_data pdata;
 
 /*----------------------- MAIN TAG STRUCTURES -----------------------*/
 /*---------------------------------|---------------------------------*/
@@ -596,5 +539,76 @@
 	{
 		MD5_HASH hash;
 	};
+
+	#define TS_FILEATTR_HAS_METADATA 0x10
+	#define TS_FILEATTR_ALLOW_ABC 0x8
+	#define TS_FILEATTR_SUPPRESS_CD_CACHING 0x4
+	#define TS_FILEATTR_RELATIVE_URLS 0x2
+	#define TS_FILEATTR_USE_NETWORK 0x1
+	struct swf_tag_fileattributes
+	{
+		ui16 bitfields;
+	};
+	typedef struct swf_tag_fileattributes FILEATTRIBUTES;
+
+/*--------------------------- LIB STRUCTS ---------------------------*/
+/*---------------------------------|---------------------------------*/
+
+	struct parse_peculiarity
+	{
+		ui16 pattern;
+		size_t offset;
+	};
+	typedef struct parse_peculiarity peculiar;
+
+	// FileHeader pseudo-tag and DefineSprite are the only tags for which a new swf_scope opens. END tags close the scope
+	struct swf_pseudotag_fileheader
+	{
+		RECT movie_rect;
+		// 8.8 fixed point
+		uf8_8 movie_fr;
+		ui16 movie_frame_count;
+	};
+	typedef struct swf_pseudotag_fileheader FILEHEADER;
+
+	#define PDATA_FLAG_MOVIE_ALLOC 0x1
+
+	struct parse_data
+	{
+		ui8 mgmt_flags;
+
+		ui8 compression;
+		ui8 version;
+		ui32 movie_size;
+		uchar signature[8];
+		uchar *u_movie;	// Uncompressed movie data
+
+		ui32 reported_movie_size;
+
+		ui8 avm1;	// An AVM1 tag is present
+		ui8 avm2;	// An AV2 tag is present
+
+		FILEATTRIBUTES attributes;
+
+		FILEHEADER header;
+
+		dnode *pec_list;	// List of parsing peculiarities that are not necessarily errors
+		dnode *pec_list_end;
+
+		uchar *tag_buffer;
+		dnode *tag_stream;
+		dnode *tag_stream_end;
+
+		dnode *scope_stack;
+
+		ui32 n_tags;	// Number of tags
+
+		swf_tag **id_list[256]; // 2D array of 1<<16 swf_tag pointers, Each 256 pointer subarray is dynamically allocated.
+
+		#if defined(EXTENDED_CALLBACKS)
+			ui32 callback_flags;
+		#endif
+	};
+	typedef struct parse_data pdata;
 
 #endif

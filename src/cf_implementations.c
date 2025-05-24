@@ -1150,6 +1150,30 @@ err check_fileattributes(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED 
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+
+	FILEATTRIBUTES *tag_struct = &(state->attributes);
+
+	C_TAG_BOUNDS_EVAL(base, 4);
+	tag_struct->bitfields = M_SANITIZE_BYTE(base[0]);
+	if(tag_struct->bitfields & (0xE0 | ((state->version < 9)? (TS_FILEATTR_ALLOW_ABC | TS_FILEATTR_SUPPRESS_CD_CACHING | TS_FILEATTR_RELATIVE_URLS) : 0)))
+	{
+		err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}
+	}
+	if(geti32(base) & (ui32)0xFFFFFF00)
+	{
+		err ret = push_peculiarity(state, PEC_RESERVE_TAMPERED, uchar_safe_ptrdiff(base, state->u_movie));
+		if(ER_ERROR(ret))
+		{
+			return ret;
+		}		
+	}
+
 	return 0;
 }
 
@@ -1356,6 +1380,24 @@ err_ptr check_tag(pdata *state, swf_tag *tag)
 	if(!tag || !state)
 	{
 		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
+	}
+
+	if(state->n_tags == 0 && state->version >= 8 && tag->tag != T_FILEATTRIBUTES)
+	{
+		handler_ret = push_peculiarity(state, PEC_FILEATTR_MISSING, uchar_safe_ptrdiff(tag->tag_data, state->u_movie));
+		if(ER_ERROR(handler_ret))
+		{
+			return (err_ptr){NULL, handler_ret};
+		}
+	}
+
+	if(tag->tag == T_FILEATTRIBUTES && state->n_tags != 0)
+	{
+		handler_ret = push_peculiarity(state, PEC_FILEATTR_MISPLACED, uchar_safe_ptrdiff(tag->tag_data, state->u_movie));
+		if(ER_ERROR(handler_ret))
+		{
+			return (err_ptr){NULL, handler_ret};
+		}
 	}
 
 	CB_CALL_PTR(state, CB_PRE_TAG_CHECK, NULL);
