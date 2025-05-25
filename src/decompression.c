@@ -95,6 +95,68 @@ err movie_file_uncomp(pdata *state, FILE *swf)
 err movie_buffer_deflate(pdata *state, uchar *buffer, ui32 size)
 {
 	C_RAISE_ERR(EFN_NIB_HI);
+	if(!state || !buffer)
+	{
+		C_RAISE_ERR(EFN_ARGS);
+	}
+
+	state->u_movie = (uchar *)malloc(state->reported_movie_size);
+	if (!(state->u_movie))
+	{
+		C_RAISE_ERR(EMM_ALLOC);
+	}
+
+	z_stream zstr;
+
+	zstr.next_out = state->u_movie;
+	zstr.avail_out = state->reported_movie_size;
+	zstr.next_in = buffer;
+	zstr.avail_in = size;
+
+	if (inflateInit(&zstr) != Z_OK)
+	{
+		free(state->u_movie);
+		state->u_movie = NULL;
+		C_RAISE_ERR(EMM_ALLOC);
+	}
+
+	int zret = inflate(&zstr, Z_NO_FLUSH);
+
+	if(zstr.avail_out == 0)
+	{
+		if(zret != Z_STREAM_END || zstr.avail_in != 0)
+		{
+			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
+			if(ER_ERROR(ret))
+			{
+				free(state->u_movie);
+				state->u_movie = NULL;
+				inflateEnd(&zstr);
+				return ret;
+			}
+		}
+	}
+	else if(zret == Z_STREAM_END)
+	{
+		state->movie_size = uchar_safe_ptrdiff(zstr.next_out, state->u_movie);
+		err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
+		if(ER_ERROR(ret))
+		{
+			free(state->u_movie);
+			state->u_movie = NULL;
+			inflateEnd(&zstr);
+			return ret;
+		}
+	}
+	else if(zret != Z_OK)
+	{
+			free(state->u_movie);
+			state->u_movie = NULL;
+			inflateEnd(&zstr);
+			C_RAISE_ERR(EFN_DECOMP);
+	}
+
+	inflateEnd(&zstr);
 	return 0;
 }
 
@@ -111,7 +173,7 @@ err movie_file_deflate(pdata *state, FILE *swf)
 	}
 
 	// Never overflows because reported_movie_size never exceeds 0xFFFFFFFF, and the minimum value of UINTMAX_MAX conferred by N1256 is (1<<64)-1
-	uintmax_t max_compressed_size = (state->reported_movie_size) +  (5 * (uintmax_t)M_CEILDIV(state->reported_movie_size, 65535));
+	// uintmax_t max_compressed_size = (state->reported_movie_size) +  (5 * (uintmax_t)M_CEILDIV(state->reported_movie_size, 65535));
 	// Naive Estimation. Assuming optimal compression for each block (AKA in the worst case, the entire file will be stored in Raw blocks, which confer a 5 byte overhead over a maximum of 65535 raw bytes)
 	// To my knowledge, nothing forbids unoptimal DEFLATE blocks, which can cause the size to baloon up. To calculate it would need more work, it would be the size of the most unoptimal Huffman tree(then it isn't really a huffman tree but the standard still allows it so our hands are ties) + A noisy assortment of the heaviest words from the tree. If it even is a finite bound, let alone that fits inside a 64 bit word for uintmax_t, I'll put off finding out for later.
 	// TODO: As a heuristic in the self implemented inflate, we will reject any file that contains a non raw block that is larger than the output block.
@@ -177,6 +239,8 @@ end:
 		// make this fatal if nothing was decompressed
 		if (!state->movie_size)
 		{
+			free(uncomp);
+			state->u_movie = NULL;
 			C_RAISE_ERR(ESW_IMPROPER);
 			return 0;
 		}
@@ -189,6 +253,8 @@ end:
 			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);	// In all honesty, the offsets throughout the libraray for PEC_FILESIZE_SMALL are not consistent, so I should fix that before changing this, but since the peculiarity interface isn't really mature yet, I think this is fine for now.
 			if(ER_ERROR(ret))
 			{
+				free(uncomp);
+				state->u_movie = NULL;
 				return ret;
 			}
 		}
@@ -196,6 +262,8 @@ end:
 	if (ferror(swf))
 	{
 		// read error
+		free(uncomp);
+		state->u_movie = NULL;
 		C_RAISE_ERR(EFL_READ);
 		return 0;
 	}
@@ -229,6 +297,8 @@ end:
 			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
 			if(ER_ERROR(ret))
 			{
+				free(uncomp);
+				state->u_movie = NULL;
 				return ret;
 			}
 		}
@@ -238,6 +308,8 @@ end:
 			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, 0);	// TODO: May need it's own peculiarity
 			if(ER_ERROR(ret))
 			{
+				free(uncomp);
+				state->u_movie = NULL;
 				return ret;
 			}
 		}
@@ -252,6 +324,8 @@ end:
 			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 			if(ER_ERROR(ret))
 			{
+				free(uncomp);
+				state->u_movie = NULL;
 				return ret;
 			}
 		}
@@ -261,6 +335,8 @@ end:
 			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
 			if(ER_ERROR(ret))
 			{
+				free(uncomp);
+				state->u_movie = NULL;
 				return ret;
 			}
 		}
@@ -272,7 +348,7 @@ end:
 
 err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 {
-	if(!state || !swf)
+	if(!state || !buffer)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
@@ -288,6 +364,8 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 		err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
 		if(ER_ERROR(ret))
 		{
+			free(state->u_movie);
+			state->u_movie = NULL;
 			return ret;
 		}
 	}
@@ -297,6 +375,8 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 		err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 		if(ER_ERROR(ret))
 		{
+			free(state->u_movie);
+			state->u_movie = NULL;
 			return ret;
 		}
 	}
@@ -312,25 +392,32 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 
 	if(size < 9)
 	{
+		free(state->u_movie);
+		state->u_movie = NULL;
 		C_RAISE_ERR(EFN_DECOMP);
 	}
 
 	lzma_ret lzret = lzma_alone_decoder(&lzstr, SIZE_MAX);
 	if(lzret != LZMA_OK)
 	{
+		free(state->u_movie);
+		state->u_movie = NULL;
 		C_RAISE_ERR(EFN_DECOMP);
 	}
 
 	for(size_t i=0; i<5; i++)
 	{
-		headerbuf[i] = readbuf[i+4];
+		headerbuf[i] = buffer[i+4];
 	}
 	seti32(headerbuf+5, state->movie_size);
 	seti32(headerbuf+9, 0);
 
-	lzret = lzma_code(&lzstr, lzact);
+	lzret = lzma_code(&lzstr, LZMA_RUN);
 	if(lzret != LZMA_OK)
 	{
+		free(state->u_movie);
+		state->u_movie = NULL;
+		lzma_end(&lzstr);
 		C_RAISE_ERR(EFN_DECOMP);
 	}
 
@@ -341,30 +428,17 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 
 	if(lzstr.avail_out == 0)
 	{
-		if(lzret == LZMA_STREAM_END && lzstr.avail_in == 0)
-		{
-			uchar testbuf[1];
-			ui8 test = fread(testbuf, 1, 1, swf);
-			if(!feof(swf))
-			{
-				err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
-				if(ER_ERROR(ret))
-				{
-					lzma_end(&lzstr);
-					return ret;
-				}
-			}
-		}
-		else
+		if(lzret != LZMA_STREAM_END || lzstr.avail_in != 0)
 		{
 			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 			if(ER_ERROR(ret))
 			{
+				free(state->u_movie);
+				state->u_movie = NULL;
 				lzma_end(&lzstr);
 				return ret;
 			}
 		}
-		break;
 	}
 	else if(lzret == LZMA_STREAM_END)
 	{
@@ -372,24 +446,30 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 		err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
 		if(ER_ERROR(ret))
 		{
+			free(state->u_movie);
+			state->u_movie = NULL;
 			lzma_end(&lzstr);
 			return ret;
 		}
-		break;
 	}
-	if(lzret != LZMA_OK)
+	else if(lzret != LZMA_OK)
 	{
 		switch(lzret)
 		{
 			case LZMA_MEM_ERROR:
+				free(state->u_movie);
+				state->u_movie = NULL;
+				lzma_end(&lzstr);
 				C_RAISE_ERR(EMM_ALLOC);
 				break;
 			default:
+				free(state->u_movie);
+				state->u_movie = NULL;
+				lzma_end(&lzstr);
 				C_RAISE_ERR(EFN_DECOMP);
 				break;
 		}
 	}
-
 	lzma_end(&lzstr);
 	return 0;
 }
@@ -424,6 +504,8 @@ err movie_file_lzma(pdata *state, FILE *swf)
 	lzma_ret lzret = lzma_alone_decoder(&lzstr, SIZE_MAX);
 	if(lzret != LZMA_OK)
 	{
+		free(state->u_movie);
+		state->u_movie = NULL;
 		C_RAISE_ERR(EFN_DECOMP);
 	}
 
@@ -438,6 +520,9 @@ err movie_file_lzma(pdata *state, FILE *swf)
 			readSize = fread(readbuf, 1, 9, swf);
 			if(readSize < 9)
 			{
+				free(state->u_movie);
+				state->u_movie = NULL;
+				lzma_end(&lzstr);
 				C_RAISE_ERR(EFN_DECOMP);
 			}
 			for(size_t i=0; i<5; i++)
@@ -463,6 +548,9 @@ err movie_file_lzma(pdata *state, FILE *swf)
 				{
 					break;
 				}
+				free(state->u_movie);
+				state->u_movie = NULL;
+				lzma_end(&lzstr);
 				C_RAISE_ERR(EFL_READ);
 			}
 
@@ -483,6 +571,8 @@ err movie_file_lzma(pdata *state, FILE *swf)
 					err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 					if(ER_ERROR(ret))
 					{
+						free(state->u_movie);
+						state->u_movie = NULL;
 						lzma_end(&lzstr);
 						return ret;
 					}
@@ -493,6 +583,8 @@ err movie_file_lzma(pdata *state, FILE *swf)
 				err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 				if(ER_ERROR(ret))
 				{
+					free(state->u_movie);
+					state->u_movie = NULL;
 					lzma_end(&lzstr);
 					return ret;
 				}
@@ -505,6 +597,8 @@ err movie_file_lzma(pdata *state, FILE *swf)
 			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
 			if(ER_ERROR(ret))
 			{
+				free(state->u_movie);
+				state->u_movie = NULL;
 				lzma_end(&lzstr);
 				return ret;
 			}
@@ -516,9 +610,15 @@ err movie_file_lzma(pdata *state, FILE *swf)
 			switch(lzret)
 			{
 				case LZMA_MEM_ERROR:
+					free(state->u_movie);
+					state->u_movie = NULL;
+					lzma_end(&lzstr);
 					C_RAISE_ERR(EMM_ALLOC);
 					break;
 				default:
+					free(state->u_movie);
+					state->u_movie = NULL;
+					lzma_end(&lzstr);
 					C_RAISE_ERR(EFN_DECOMP);
 					break;
 			}
