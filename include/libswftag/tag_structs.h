@@ -608,6 +608,9 @@
 		#if defined(EXTENDED_CALLBACKS)
 			ui32 callback_flags;
 		#endif
+
+		// This is just a way to attach an external context relevant to your program to this structure to be used in callbacks etc.
+		void *external_data;
 	};
 	typedef struct parse_data pdata;
 

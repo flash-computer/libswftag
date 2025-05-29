@@ -270,7 +270,7 @@ err push_peculiarity(pdata *state, ui32 pattern, size_t offset);
 err pop_peculiarity(pdata *state);
 err remove_peculiarity(pdata *state, dnode *node);
 
-err push_tag(pdata *state, swf_tag *new_tag);
+err copy_push_tag(pdata *state, swf_tag new_tag);
 err pop_tag(pdata *state);
 err remove_tag(pdata *state, dnode *node);
 

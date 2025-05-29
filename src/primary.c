@@ -217,6 +217,7 @@ err init_parse_data(pdata *state)
 	return 0;
 }
 
+// Does not reset callback flags if set
 err destroy_parse_data(pdata *state)
 {
 	if(!state)
@@ -264,11 +265,11 @@ err destroy_parse_data(pdata *state)
 		S_FREE(state->id_list[i]);
 		state->id_list[i] = NULL;
 	}
+
 	state->n_tags = 0;
 	state->version = 0;
 	state->movie_size = 0;
 	state->reported_movie_size = 0;
-
 	state->mgmt_flags = 0;
 	return 0;
 }
@@ -340,13 +341,10 @@ err remove_peculiarity(pdata *state, dnode *node)
 }
 
 // Linked list ops for swf_tag linked lists
-err push_tag(pdata *state, swf_tag *new_tag)
+// Copies tag data. The responsibility of destroying the data falls upon the caller
+err copy_push_tag(pdata *state, swf_tag new_tag)
 {
 	if(!state)
-	{
-		C_RAISE_ERR(EFN_ARGS);
-	}
-	if(!new_tag)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
@@ -357,8 +355,7 @@ err push_tag(pdata *state, swf_tag *new_tag)
 		return check_val.ret;
 	}
 	swf_tag *node = ((dnode *)check_val.pointer)->data;
-	*node = *new_tag;
-	free(new_tag);
+	*node = new_tag;
 	node->parent_node = check_val.pointer;
 
 	if(!(state->tag_stream))

@@ -46,8 +46,12 @@ void seti16(uchar *loc, ui16 inp)
 
 int signed_comparei32(ui32 comparand_a, ui32 comparand_b)
 {
-	ui32 sign_mask = ((ui32)1)<<31;
-	return (((comparand_a & sign_mask) == (comparand_b & sign_mask)) ? M_UNSIGNED_COMPARE(comparand_a, comparand_b) : (comparand_a & sign_mask) ? -1 : 1);
+	return (((comparand_a & (ui32)0x80000000) == (comparand_b & (ui32)0x80000000)) ? M_UNSIGNED_COMPARE(comparand_a, comparand_b) : (comparand_a & (ui32)0x80000000) ? -1 : 1);
+}
+
+int signed_comparei16(ui16 comparand_a, ui16 comparand_b)
+{
+	return (((comparand_a & (ui16)0x8000) == (comparand_b & (ui16)0x8000)) ? M_UNSIGNED_COMPARE(comparand_a, comparand_b) : (comparand_a & (ui16)0x8000) ? -1 : 1);
 }
 
 ui32 get_bitfield(uchar *buffer, ui32 base, ui8 offset)

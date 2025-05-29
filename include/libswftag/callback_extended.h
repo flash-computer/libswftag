@@ -13,6 +13,15 @@ err callback_post_tag_check(pdata *state);
 
 static err (*callback_functions[CB_N_CALLBACKS])(pdata *, swf_tag *) = {&callback_pre_tag_check, &callback_post_tag_check};
 
+void set_callback_flag(pdata *state, ui8 callbackindex, ui8 level)
+{
+	callbackindex &= 0x1F;
+	callbackindex %= CB_POST_TAG_CHECK;
+	state->callback_flags &= ~((ui32)(1<<callbackindex));
+	state->callback_flags |= (level)? 1 * (1<<callbackindex): 0;
+	return;
+}
+
 ui8 get_callback_flag(pdata *state, ui8 callbackindex)
 {
 	callbackindex &= 0x1F;

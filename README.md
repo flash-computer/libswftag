@@ -15,6 +15,12 @@ Things to do and fix:
 
 - Thorough testing (It's testable on uncompressed swfs now! Use [swfcheck](https://github.com/flash-computer/swfcheck) for the testing. ~~And use [swfpack](https://github.com/arkq/swfpack) for the decompression until the decompression algorithms are implemented.~~)
 
+Build Tips:
+
+- If the target architecture is little endian and the environment has `uint32_t` and `uint16_t` defined in stdint.h (Or if you have defined them yourself prior to including the library), define the `SWFTAG_MATH_INLINE` `LITTLE_ENDIAN_MACHINE` and `UINTN_AVAILABLE` prior to inclusion to improve performance slightly.
+
+- More callbacks are provided through the `EXTENDED_CALLBACKS` macro. Further, the `EXTENDED_CALLBACKS_TYPE` macro can be used to select the type of the extended callbacks, with 0 corresponding to Mandatory callbacks and 1 corresponding to conditional callbacks controlled by the `callback_flags` field of the pdata structure. The recommended way of setting, resetting and getting the flags is to use `set_callback_flag` and `get_callback_flag` functions.
+
 Links/Resources:
 
 - [Adobe's swf file format spec](https://web.archive.org/web/20210609225053/https://www.adobe.com/content/dam/acom/en/devnet/pdf/swf-file-format-spec.pdf)

@@ -1,4 +1,6 @@
 #include<libswftag/decompression.h>
+
+#define SWFTAG_MATH_INLINE
 #include<libswftag/swfmath.h>
 
 #include<stdlib.h>

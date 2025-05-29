@@ -1,6 +1,7 @@
 #include<libswftag/swftag.h>
 #include<libswftag/error.h>
 
+#define SWFTAG_MATH_INLINE
 #include<libswftag/swfmath.h>
 #include<libswftag/decompression.h>
 
@@ -52,7 +53,7 @@ err_ptr get_tag(pdata *state, uchar *buffer)
 	return (err_ptr){tag, 0};
 }
 
-// Generates a generic tag. Use with push_tag to add it to the tag stream
+// Generates a generic tag. Use with copy_push_tag to add it to the tag stream and then free it afterwards
 err_ptr spawn_tag(pdata *state, int tag, ui32 size, uchar *tag_data)
 {
 	if(!tag_valid(tag) && tag != F_FILEHEADER)
@@ -577,13 +578,15 @@ err file_header_verification(pdata *state)
 		return tag_ret.ret;
 	}
 
-	tag_ret.ret = push_tag(state, tag_ret.pointer);
+	tag_ret.ret = copy_push_tag(state, *((swf_tag *)tag_ret.pointer));
+	free(tag_ret.pointer);
+	tag_ret.pointer = NULL;
 	if(ER_ERROR(tag_ret.ret))
 	{
 		return tag_ret.ret;
 	}
 
-	tag_ret.ret = push_scope(state, tag_ret.pointer);
+	tag_ret.ret = push_scope(state, state->tag_stream_end);
 	if(ER_ERROR(tag_ret.ret))
 	{
 		return tag_ret.ret;
@@ -653,7 +656,9 @@ err check_tag_stream(pdata *state)
 			return stream_val.ret;
 		}
 
-		err ret_check = push_tag(state, stream_val.pointer);
+		err ret_check = copy_push_tag(state, *((swf_tag *)stream_val.pointer));
+		free(stream_val.pointer);
+		stream_val.pointer = NULL;
 		if(ER_ERROR(ret_check))
 		{
 			return ret_check;

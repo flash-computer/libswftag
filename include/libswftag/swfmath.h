@@ -62,15 +62,36 @@
 	*/
 #endif
 
-ui32 geti32(uchar *inp);
-ui16 geti16(uchar *inp);
-uf16_16 getuf16_16(uchar *inp);
-uf8_8 getuf8_8(uchar *inp);
+#if defined(SWFTAG_MATH_INLINE)
+	#if defined(LITTLE_ENDIAN_MACHINE) && defined(UINTN_AVAILABLE)
+		#define geti32(inp) ((ui32)(*(uint32_t *)(inp)))
+		#define geti16(inp) ((ui16)(*(uint16_t *)(inp)))
+		#define seti32(loc, inp) {*(uint32_t *)(loc) = (uint32_t)inp;}
+		#define seti16(loc, inp) {*(uint16_t *)(loc) = (uint16_t)inp;}
+	#else
+		#define geti32(inp) (M_SANITIZE_BYTE((ui32)(inp)[0]) | M_SANITIZE_BYTE(((ui32)(inp)[1])<<8) | M_SANITIZE_BYTE(((ui32)(inp)[2])<<16) | M_SANITIZE_BYTE(((ui32)(inp)[3])<<24))
+		#define geti16(inp) (M_SANITIZE_BYTE((ui16)(inp)[0]) | M_SANITIZE_BYTE(((ui16)(inp)[1])<<8))
+		#define seti32(loc, inp) {((uchar *)loc)[0] = (ui8)(((ui32)inp) & 0xFF); ((uchar *)loc)[1] = (ui8)(((ui32)inp>>8) & 0xFF); ((uchar *)(loc))[2] = (ui8)(((ui32)inp>>16) & 0xFF); ((uchar *)loc)[3] = (ui8)(((ui32)inp>>24) & 0xFF);}
+		#define seti16(loc, inp) {((uchar *)loc)[0] = (ui8)(((ui16)inp) & 0xFF); ((uchar *)loc)[1] = (ui8)(((ui16)inp>>8) & 0xFF);}
+	#endif
 
-void seti32(uchar *loc, ui32 inp);
-void seti16(uchar *loc, ui16 inp);
+	#define getuf16_16(inp) ((uf16_16){geti16(((uchar *)inp)+2), geti16(inp)})
+	#define getuf8_8(inp) (uf8_8){M_SANITIZE_BYTE((ui8)(inp)[1]), M_SANITIZE_BYTE((ui8)(inp)[0])};
 
-int signed_comparei32(ui32 comparand_a, ui32 comparand_b);
+	#define signed_comparei32(val_a, val_b) (((((ui32)val_a) & (ui32)0x80000000) == (((ui32)val_b) & (ui32)0x80000000)) ? (int)M_UNSIGNED_COMPARE(((ui32)val_a), ((ui32)val_b)) : (((ui32)val_a) & (ui32)0x80000000) ? (int)-1 : (int)1)
+	#define signed_comparei16(val_a, val_b) (((((ui16)val_a) & (ui16)0x8000) == (((ui16)val_b) & (ui16)0x8000)) ? (int)M_UNSIGNED_COMPARE(((ui16)val_a), ((ui16)val_b)) : (((ui16)val_a) & (ui16)0x8000) ? (int)-1 : (int)1)
+#else
+	ui32 geti32(uchar *inp);
+	ui16 geti16(uchar *inp);
+	uf16_16 getuf16_16(uchar *inp);
+	uf8_8 getuf8_8(uchar *inp);
+
+	void seti32(uchar *loc, ui32 inp);
+	void seti16(uchar *loc, ui16 inp);
+
+	int signed_comparei32(ui32 comparand_a, ui32 comparand_b);
+	int signed_comparei16(ui16 comparand_a, ui16 comparand_b);
+#endif
 
 ui32 get_bitfield(uchar *buffer, ui32 base, ui8 offset);
 ui32 get_signed_bitfield(uchar *buffer, ui32 base, ui8 offset);
