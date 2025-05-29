@@ -26,3 +26,5 @@ Links/Resources:
 - [Adobe's swf file format spec](https://web.archive.org/web/20210609225053/https://www.adobe.com/content/dam/acom/en/devnet/pdf/swf-file-format-spec.pdf)
 - [Swf tags list](https://www.m2osw.com/swf_tags)
 - [JPEXS's FFDec's wiki page section for additional links](https://github.com/jindrapetrik/jpexs-decompiler/wiki/Links)
+
+<h1 align="center"><img src="https://github.com/flash-computer/branding/blob/main/libswftag/libswftag-logo-1024x1024.png"></h1>
