@@ -209,6 +209,8 @@ err init_parse_data(pdata *state)
 	#if defined(EXTENDED_CALLBACKS)
 			state->callback_flags = 0;
 	#endif
+	state->alloc_fun = NULL;
+	state->free_fun = NULL;
 
 	for(ui16 i=0; i<0x100; i++)
 	{

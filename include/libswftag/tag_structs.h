@@ -609,6 +609,9 @@
 			ui32 callback_flags;
 		#endif
 
+		void *(*alloc_fun)(size_t);
+		void (*free_fun)(void *);
+
 		// This is just a way to attach an external context relevant to your program to this structure to be used in callbacks etc.
 		void *external_data;
 	};

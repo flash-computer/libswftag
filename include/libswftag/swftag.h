@@ -3,7 +3,7 @@
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
 #define VER_MAJ 0
-#define VER_MIN 1
+#define VER_MIN 2
 
 /*-------------------------------------------------------VT100 Text Formatting-------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
@@ -280,7 +280,7 @@ err pop_scope(pdata *state);
 err_ptr alloc_push_freelist(pdata *state, size_t size, dnode *node);
 err free_freelist(pdata *state, dnode *to_free);
 
-err_ptr get_tag(pdata *state, uchar *buffer);
+err_ptr get_tag(pdata *state, uchar *buffer, swf_tag *tag);
 err_ptr check_tag(pdata *state, swf_tag *tag);
 err_ptr spawn_tag(pdata *state, int tag, ui32 size, uchar *tag_data);
 

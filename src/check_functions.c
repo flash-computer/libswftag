@@ -17,16 +17,19 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------|-----------------------------------------------------------------*/
 
-err_ptr get_tag(pdata *state, uchar *buffer)
+err_ptr get_tag(pdata *state, uchar *buffer, swf_tag *tag)
 {
 	if(M_BUF_BOUNDS_CHECK(buffer, 2, state))
 	{
 		C_RAISE_ERR_PTR(NULL, ESW_SHORTFILE);
 	}
-	swf_tag *tag = malloc(sizeof(swf_tag));
 	if(!tag)
 	{
-		C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
+		swf_tag *tag = malloc(sizeof(swf_tag));
+		if(!tag)
+		{
+			C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
+		}
 	}
 	tag->tag_and_size = geti16((uchar *)buffer);
 	tag->tag = (tag->tag_and_size & 0xFFC0)>>6;
@@ -645,7 +648,8 @@ err check_tag_stream(pdata *state)
 	uchar *buffer = state->tag_buffer;
 	while(1)
 	{
-		err_ptr stream_val = get_tag(state, buffer);
+		swf_tag new_tag;
+		err_ptr stream_val = get_tag(state, buffer, &new_tag);
 		if(stream_val.ret)
 		{
 			// Diagnostics go here, for now just free tag
@@ -656,9 +660,7 @@ err check_tag_stream(pdata *state)
 			return stream_val.ret;
 		}
 
-		err ret_check = copy_push_tag(state, *((swf_tag *)stream_val.pointer));
-		free(stream_val.pointer);
-		stream_val.pointer = NULL;
+		err ret_check = copy_push_tag(state, new_tag);
 		if(ER_ERROR(ret_check))
 		{
 			return ret_check;
