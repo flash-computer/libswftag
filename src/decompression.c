@@ -19,6 +19,8 @@ err movie_deflate(pdata *state);
 err movie_lzma(pdata *state);
 
 #define C_RAISE_ERR(error) {err handler_ret; ER_RAISE_ERROR_ERR(handler_ret, state, error);}
+#define STATE_ALLOC(pdata, size_to_alloc) ((!(pdata->alloc_fun))?malloc(size_to_alloc) : (pdata->alloc_fun)(size_to_alloc)) 
+#define STATE_FREE(pdata, pointer_to_free) ((!(pdata->free_fun))?free(pointer_to_free) : (pdata->free_fun)(pointer_to_free))
 
 err movie_buffer_uncomp(pdata *state, uchar *buffer, ui32 size)
 {
@@ -57,7 +59,7 @@ err movie_file_uncomp(pdata *state, FILE *swf)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	state->u_movie = malloc(state->reported_movie_size);
+	state->u_movie = (uchar *)STATE_ALLOC(state, state->reported_movie_size);
 	state->mgmt_flags |= PDATA_FLAG_MOVIE_ALLOC;
 	if(!(state->u_movie))
 	{
@@ -102,7 +104,7 @@ err movie_buffer_deflate(pdata *state, uchar *buffer, ui32 size)
 		C_RAISE_ERR(EFN_ARGS);
 	}
 
-	state->u_movie = (uchar *)malloc(state->reported_movie_size);
+	state->u_movie = (uchar *)STATE_ALLOC(state, state->reported_movie_size);;
 	if (!(state->u_movie))
 	{
 		C_RAISE_ERR(EMM_ALLOC);
@@ -117,7 +119,7 @@ err movie_buffer_deflate(pdata *state, uchar *buffer, ui32 size)
 
 	if (inflateInit(&zstr) != Z_OK)
 	{
-		free(state->u_movie);
+		STATE_FREE(state, state->u_movie);
 		state->u_movie = NULL;
 		C_RAISE_ERR(EMM_ALLOC);
 	}
@@ -131,7 +133,7 @@ err movie_buffer_deflate(pdata *state, uchar *buffer, ui32 size)
 			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 			if(ER_ERROR(ret))
 			{
-				free(state->u_movie);
+				STATE_FREE(state, state->u_movie);
 				state->u_movie = NULL;
 				inflateEnd(&zstr);
 				return ret;
@@ -144,7 +146,7 @@ err movie_buffer_deflate(pdata *state, uchar *buffer, ui32 size)
 		err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
 		if(ER_ERROR(ret))
 		{
-			free(state->u_movie);
+			STATE_FREE(state, state->u_movie);
 			state->u_movie = NULL;
 			inflateEnd(&zstr);
 			return ret;
@@ -152,7 +154,7 @@ err movie_buffer_deflate(pdata *state, uchar *buffer, ui32 size)
 	}
 	else if(zret != Z_OK)
 	{
-			free(state->u_movie);
+			STATE_FREE(state, state->u_movie);
 			state->u_movie = NULL;
 			inflateEnd(&zstr);
 			C_RAISE_ERR(EFN_DECOMP);
@@ -168,7 +170,7 @@ err movie_file_deflate(pdata *state, FILE *swf)
 	{
 		C_RAISE_ERR(EFN_ARGS);
 	}
-	uchar *uncomp = malloc(state->reported_movie_size);
+	uchar *uncomp = (uchar *)STATE_ALLOC(state, state->reported_movie_size);;
 	if (!uncomp)
 	{
 		C_RAISE_ERR(EMM_ALLOC);
@@ -196,7 +198,7 @@ err movie_file_deflate(pdata *state, FILE *swf)
 
 	if (inflateInit(&zs) != Z_OK)
 	{
-		free(uncomp);
+		STATE_FREE(state, uncomp);
 		C_RAISE_ERR(EMM_ALLOC);
 	}
 
@@ -241,7 +243,7 @@ end:
 		// make this fatal if nothing was decompressed
 		if (!state->movie_size)
 		{
-			free(uncomp);
+			STATE_FREE(state, uncomp);
 			state->u_movie = NULL;
 			C_RAISE_ERR(ESW_IMPROPER);
 			return 0;
@@ -255,7 +257,7 @@ end:
 			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);	// In all honesty, the offsets throughout the libraray for PEC_FILESIZE_SMALL are not consistent, so I should fix that before changing this, but since the peculiarity interface isn't really mature yet, I think this is fine for now.
 			if(ER_ERROR(ret))
 			{
-				free(uncomp);
+				STATE_FREE(state, uncomp);
 				state->u_movie = NULL;
 				return ret;
 			}
@@ -264,7 +266,7 @@ end:
 	if (ferror(swf))
 	{
 		// read error
-		free(uncomp);
+		STATE_FREE(state, uncomp);
 		state->u_movie = NULL;
 		C_RAISE_ERR(EFL_READ);
 		return 0;
@@ -299,7 +301,7 @@ end:
 			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
 			if(ER_ERROR(ret))
 			{
-				free(uncomp);
+				STATE_FREE(state, uncomp);
 				state->u_movie = NULL;
 				return ret;
 			}
@@ -310,7 +312,7 @@ end:
 			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, 0);	// TODO: May need it's own peculiarity
 			if(ER_ERROR(ret))
 			{
-				free(uncomp);
+				STATE_FREE(state, uncomp);
 				state->u_movie = NULL;
 				return ret;
 			}
@@ -326,7 +328,7 @@ end:
 			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 			if(ER_ERROR(ret))
 			{
-				free(uncomp);
+				STATE_FREE(state, uncomp);
 				state->u_movie = NULL;
 				return ret;
 			}
@@ -337,7 +339,7 @@ end:
 			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
 			if(ER_ERROR(ret))
 			{
-				free(uncomp);
+				STATE_FREE(state, uncomp);
 				state->u_movie = NULL;
 				return ret;
 			}
@@ -355,7 +357,7 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 		C_RAISE_ERR(EFN_ARGS);
 	}
 
-	state->u_movie = (uchar *)malloc(state->reported_movie_size);
+	state->u_movie = (uchar *)STATE_ALLOC(state, state->reported_movie_size);
 	if(!(state->u_movie))
 	{
 		C_RAISE_ERR(EMM_ALLOC);
@@ -366,7 +368,7 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 		err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, 0);
 		if(ER_ERROR(ret))
 		{
-			free(state->u_movie);
+			STATE_FREE(state, state->u_movie);
 			state->u_movie = NULL;
 			return ret;
 		}
@@ -377,7 +379,7 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 		err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 		if(ER_ERROR(ret))
 		{
-			free(state->u_movie);
+			STATE_FREE(state, state->u_movie);
 			state->u_movie = NULL;
 			return ret;
 		}
@@ -394,7 +396,7 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 
 	if(size < 9)
 	{
-		free(state->u_movie);
+		STATE_FREE(state, state->u_movie);
 		state->u_movie = NULL;
 		C_RAISE_ERR(EFN_DECOMP);
 	}
@@ -402,7 +404,7 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 	lzma_ret lzret = lzma_alone_decoder(&lzstr, SIZE_MAX);
 	if(lzret != LZMA_OK)
 	{
-		free(state->u_movie);
+		STATE_FREE(state, state->u_movie);
 		state->u_movie = NULL;
 		C_RAISE_ERR(EFN_DECOMP);
 	}
@@ -417,7 +419,7 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 	lzret = lzma_code(&lzstr, LZMA_RUN);
 	if(lzret != LZMA_OK)
 	{
-		free(state->u_movie);
+		STATE_FREE(state, state->u_movie);
 		state->u_movie = NULL;
 		lzma_end(&lzstr);
 		C_RAISE_ERR(EFN_DECOMP);
@@ -435,7 +437,7 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 			err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 			if(ER_ERROR(ret))
 			{
-				free(state->u_movie);
+				STATE_FREE(state, state->u_movie);
 				state->u_movie = NULL;
 				lzma_end(&lzstr);
 				return ret;
@@ -448,7 +450,7 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 		err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
 		if(ER_ERROR(ret))
 		{
-			free(state->u_movie);
+			STATE_FREE(state, state->u_movie);
 			state->u_movie = NULL;
 			lzma_end(&lzstr);
 			return ret;
@@ -459,13 +461,13 @@ err movie_buffer_lzma(pdata *state, uchar *buffer, ui32 size)
 		switch(lzret)
 		{
 			case LZMA_MEM_ERROR:
-				free(state->u_movie);
+				STATE_FREE(state, state->u_movie);
 				state->u_movie = NULL;
 				lzma_end(&lzstr);
 				C_RAISE_ERR(EMM_ALLOC);
 				break;
 			default:
-				free(state->u_movie);
+				STATE_FREE(state, state->u_movie);
 				state->u_movie = NULL;
 				lzma_end(&lzstr);
 				C_RAISE_ERR(EFN_DECOMP);
@@ -483,7 +485,7 @@ err movie_file_lzma(pdata *state, FILE *swf)
 		C_RAISE_ERR(EFN_ARGS);
 	}
 
-	state->u_movie = (uchar *)malloc(state->reported_movie_size);
+	state->u_movie = (uchar *)STATE_ALLOC(state, state->reported_movie_size);
 	if(!(state->u_movie))
 	{
 		C_RAISE_ERR(EMM_ALLOC);
@@ -506,7 +508,7 @@ err movie_file_lzma(pdata *state, FILE *swf)
 	lzma_ret lzret = lzma_alone_decoder(&lzstr, SIZE_MAX);
 	if(lzret != LZMA_OK)
 	{
-		free(state->u_movie);
+		STATE_FREE(state, state->u_movie);
 		state->u_movie = NULL;
 		C_RAISE_ERR(EFN_DECOMP);
 	}
@@ -522,7 +524,7 @@ err movie_file_lzma(pdata *state, FILE *swf)
 			readSize = fread(readbuf, 1, 9, swf);
 			if(readSize < 9)
 			{
-				free(state->u_movie);
+				STATE_FREE(state, state->u_movie);
 				state->u_movie = NULL;
 				lzma_end(&lzstr);
 				C_RAISE_ERR(EFN_DECOMP);
@@ -550,7 +552,7 @@ err movie_file_lzma(pdata *state, FILE *swf)
 				{
 					break;
 				}
-				free(state->u_movie);
+				STATE_FREE(state, state->u_movie);
 				state->u_movie = NULL;
 				lzma_end(&lzstr);
 				C_RAISE_ERR(EFL_READ);
@@ -573,7 +575,7 @@ err movie_file_lzma(pdata *state, FILE *swf)
 					err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 					if(ER_ERROR(ret))
 					{
-						free(state->u_movie);
+						STATE_FREE(state, state->u_movie);
 						state->u_movie = NULL;
 						lzma_end(&lzstr);
 						return ret;
@@ -585,7 +587,7 @@ err movie_file_lzma(pdata *state, FILE *swf)
 				err ret = push_peculiarity(state, PEC_DATA_AFTER_MOVIE, state->movie_size);
 				if(ER_ERROR(ret))
 				{
-					free(state->u_movie);
+					STATE_FREE(state, state->u_movie);
 					state->u_movie = NULL;
 					lzma_end(&lzstr);
 					return ret;
@@ -599,7 +601,7 @@ err movie_file_lzma(pdata *state, FILE *swf)
 			err ret = push_peculiarity(state, PEC_FILESIZE_SMALL, state->movie_size);
 			if(ER_ERROR(ret))
 			{
-				free(state->u_movie);
+				STATE_FREE(state, state->u_movie);
 				state->u_movie = NULL;
 				lzma_end(&lzstr);
 				return ret;
@@ -612,13 +614,13 @@ err movie_file_lzma(pdata *state, FILE *swf)
 			switch(lzret)
 			{
 				case LZMA_MEM_ERROR:
-					free(state->u_movie);
+					STATE_FREE(state, state->u_movie);
 					state->u_movie = NULL;
 					lzma_end(&lzstr);
 					C_RAISE_ERR(EMM_ALLOC);
 					break;
 				default:
-					free(state->u_movie);
+					STATE_FREE(state, state->u_movie);
 					state->u_movie = NULL;
 					lzma_end(&lzstr);
 					C_RAISE_ERR(EFN_DECOMP);
@@ -630,4 +632,6 @@ err movie_file_lzma(pdata *state, FILE *swf)
 	return 0;
 }
 
+#undef STATE_ALLOC
+#undef STATE_FREE
 #undef C_RAISE_ERROR

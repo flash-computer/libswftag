@@ -12,6 +12,8 @@
 #define C_RAISE_ERR(error) {err handler_ret; ER_RAISE_ERROR_ERR(handler_ret, state, error);}
 #define C_RAISE_ERR_PTR(pointer, error) {err handler_ret; ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, state, error);}
 #define C_RAISE_ERR_INT(integer, error) {err handler_ret; ER_RAISE_ERROR_ERR_INT(handler_ret, integer, state, error);}
+#define STATE_ALLOC(pdata, size_to_alloc) ((!(pdata->alloc_fun))?malloc(size_to_alloc) : (pdata->alloc_fun)(size_to_alloc)) 
+#define STATE_FREE(pdata, pointer_to_free) ((!(pdata->free_fun))?free(pointer_to_free) : (pdata->free_fun)(pointer_to_free))
 
 /*-------------------------------------------------------------Functions-------------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
@@ -25,7 +27,7 @@ err_ptr get_tag(pdata *state, uchar *buffer, swf_tag *tag)
 	}
 	if(!tag)
 	{
-		swf_tag *tag = malloc(sizeof(swf_tag));
+		swf_tag *tag = STATE_ALLOC(state, sizeof(swf_tag));
 		if(!tag)
 		{
 			C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
@@ -64,7 +66,7 @@ err_ptr spawn_tag(pdata *state, int tag, ui32 size, uchar *tag_data)
 		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
 	}
 
-	swf_tag *new_tag = malloc(sizeof(swf_tag));
+	swf_tag *new_tag = STATE_ALLOC(state, sizeof(swf_tag));
 	if(!new_tag)
 	{
 		C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
@@ -582,7 +584,7 @@ err file_header_verification(pdata *state)
 	}
 
 	tag_ret.ret = copy_push_tag(state, *((swf_tag *)tag_ret.pointer));
-	free(tag_ret.pointer);
+	STATE_FREE(state, tag_ret.pointer);
 	tag_ret.pointer = NULL;
 	if(ER_ERROR(tag_ret.ret))
 	{
@@ -655,7 +657,7 @@ err check_tag_stream(pdata *state)
 			// Diagnostics go here, for now just free tag
 			if(stream_val.pointer)
 			{
-				free(stream_val.pointer);
+				STATE_FREE(state, stream_val.pointer);
 			}
 			return stream_val.ret;
 		}
@@ -829,6 +831,8 @@ err check_file_validity(pdata *state, FILE *swf)
 	return check_tag_stream(state);
 }
 
+#undef STATE_ALLOC
+#undef STATE_FREE
 #undef C_RAISE_ERR_INT
 #undef C_RAISE_ERR_PTR
 #undef C_RAISE_ERR

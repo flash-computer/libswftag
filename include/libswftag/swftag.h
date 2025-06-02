@@ -165,7 +165,7 @@
 	#endif
 #endif
 
-#define S_FREE(ptr)	if(ptr)free(ptr);ptr=NULL;
+#define S_FREE(ptr)	if(ptr){(state->free_fun)?(state->free_fun)(ptr):free(ptr);};ptr=NULL;
 
 #define T_VER_MIN 1
 #define T_VER_MAX 43	// One swf I have claims to have this version. I don't know what the actual the max version is (Pokemon Tower Defense claims 50, so I need some documentation to resolve this asap). TODO

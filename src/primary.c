@@ -12,6 +12,9 @@
 #define C_RAISE_ERR_PTR(pointer, error) {err handler_ret; ER_RAISE_ERROR_ERR_PTR(handler_ret, pointer, state, error);}
 #define C_RAISE_ERR_INT(integer, error) {err handler_ret; ER_RAISE_ERROR_ERR_INT(handler_ret, integer, state, error);}
 
+#define STATE_ALLOC(pdata, size_to_alloc) ((!(pdata->alloc_fun))?malloc(size_to_alloc) : (pdata->alloc_fun)(size_to_alloc)) 
+#define STATE_FREE(pdata, pointer_to_free) ((!(pdata->free_fun))?free(pointer_to_free) : (pdata->free_fun)(pointer_to_free))
+
 struct tag_information
 {
 	char *name;
@@ -120,7 +123,7 @@ err id_register(pdata *state, ui16 id, swf_tag *tag)
 	}
 	else
 	{
-		state->id_list[(id>>8)&0xFF] = list = (swf_tag **)malloc(sizeof(swf_tag **) * 0x100);
+		state->id_list[(id>>8)&0xFF] = list = (swf_tag **)STATE_ALLOC(state, sizeof(swf_tag **) * 0x100);
 		if(!list)
 		{
 			C_RAISE_ERR(EMM_ALLOC);
@@ -136,7 +139,7 @@ err id_register(pdata *state, ui16 id, swf_tag *tag)
 
 err_ptr append_list(pdata *state, dnode *node, size_t data_sz)
 {
-	dnode *new_node = malloc(sizeof(dnode) + data_sz);
+	dnode *new_node = STATE_ALLOC(state, (sizeof(dnode) + data_sz));
 	if(!new_node)
 	{
 		C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
@@ -178,7 +181,7 @@ err remove_list(pdata *state, dnode *node)
 	{
 		node->next->prev = node->prev;
 	}
-	free(node);
+	STATE_FREE(state, node);
 	return 0;
 }
 
@@ -460,7 +463,7 @@ err_ptr alloc_push_freelist(pdata *state, size_t size, dnode *node)
 	{
 		C_RAISE_ERR_PTR(NULL, EFN_ARGS);
 	}
-	void *ret_ptr = malloc(size);
+	void *ret_ptr = STATE_ALLOC(state, size);
 	if(!ret_ptr)
 	{
 		C_RAISE_ERR_PTR(NULL, EMM_ALLOC);
@@ -499,6 +502,8 @@ err free_freelist(pdata *state, dnode *to_free)
 	return 0;
 }
 
+#undef STATE_ALLOC
+#undef STATE_FREE
 #undef C_RAISE_ERR_INT
 #undef C_RAISE_ERR_PTR
 #undef C_RAISE_ERR
