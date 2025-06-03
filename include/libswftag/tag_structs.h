@@ -540,6 +540,13 @@
 		MD5_HASH hash;
 	};
 
+	struct swf_tag_definebuttoncxform
+	{
+		ui16 button_id;
+		swf_tag *button_tag;
+		COLOR_TRANSFORM color_transform;
+	};
+
 	#define TS_FILEATTR_HAS_METADATA 0x10
 	#define TS_FILEATTR_ALLOW_ABC 0x8
 	#define TS_FILEATTR_SUPPRESS_CD_CACHING 0x4

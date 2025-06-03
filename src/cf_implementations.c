@@ -517,8 +517,8 @@ err check_definebuttonsound(pdata *state, swf_tag *tag_data) //--TODO: STARTED B
 		return ret.ret;
 	}
 
-	tag_struct->font_tag = (swf_tag *)ret_tag.pointer;
-	if(tag_struct->font_tag->tag != T_DEFINEFONT)
+	tag_struct->button_tag = (swf_tag *)ret_tag.pointer;
+	if(tag_struct->button_tag->tag != T_DEFINEBUTTON)
 	{
 		C_RAISE_ERR(ESW_IMPROPER);
 	}
@@ -579,6 +579,39 @@ err check_defineshape2(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YE
 err check_definebuttoncxform(pdata *state, swf_tag *tag_data) //--TODO: NOT STARTED YET--//
 {
 	C_INTERNAL_RUNTIME_CHECK();
+	C_INIT_TAG(swf_tag_definebuttoncxform);
+	
+	uchar *base = tag_data->tag_data;
+	ui32 offset = 0;
+	
+/* TODO: Uncomment this after check_definebutton is properly implemented with id registration
+	C_TAG_BOUNDS_EVAL(base, 2);
+	tag_struct->button_id = geti16(base);
+	err_ptr ret = id_get_tag(tag_struct->button_id);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+
+	tag_struct->button_tag = (swf_tag *)ret_tag.pointer;
+	if(tag_struct->button_tag->tag != T_DEFINEBUTTON)
+	{
+		C_RAISE_ERR(ESW_IMPROPER);
+	}
+	*/
+	offset = 2;
+
+	err_int ret = swf_color_transform_parse(state, &(tag_struct->color_transform), base + offset, tag_data);
+	if(ER_ERROR(ret.ret))
+	{
+		return ret.ret;
+	}
+	offset += M_ALIGN(ret.integer, 3)>>3;
+	
+	if(offset < tag_data->size)
+	{
+		return push_peculiarity(state, PEC_TAG_EXTRA, uchar_safe_ptrdiff((tag_data->tag_data + offset), state->u_movie));
+	}
 	return 0;
 }
 
@@ -663,10 +696,6 @@ err check_protect(pdata *state, swf_tag *tag_data) //--TODO: STARTED, BUT NOT FI
 		{
 			return ret;
 		}
-	}
-	else
-	{
-
 	}
 	if((((nullpos)? nullpos : ((tag_data->size) - 2)) - passpos) != 22)
 	{
