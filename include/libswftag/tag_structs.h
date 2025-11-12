@@ -547,6 +547,20 @@
 		COLOR_TRANSFORM color_transform;
 	};
 
+	struct swf_tag_placeobject2plus
+	{
+		ui16 bitfields;
+		ui16 obj_id;
+		MATRIX matrix;
+		COLOR_TRANSFORM color_transform;
+		ui16 morph_pos;
+		uchar *name;
+		ui16 clipping_depth;
+		ui8 filter_count;
+		FILTER_ANY *filters;
+		ui8 blend_mode;
+	};
+
 	#define TS_FILEATTR_HAS_METADATA 0x10
 	#define TS_FILEATTR_ALLOW_ABC 0x8
 	#define TS_FILEATTR_SUPPRESS_CD_CACHING 0x4
